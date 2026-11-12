@@ -190,6 +190,25 @@ main{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 .sp-rules{margin-top:12px}
 .sp-rules p{line-height:1.6}
 
+/* 클루 추리 노트 */
+.clue-table th,.clue-table td{padding:2px 3px}
+.clue-table th.cat{text-align:left;position:sticky;left:0;background:var(--card);z-index:1}
+.clue-table thead th{font-size:12px;line-height:1.2}
+.clue-table th.me,.clue-table td.me{background:var(--hi)}
+.clue-table th.me{color:var(--accent);font-weight:800}
+.clue-sec th.cat{font-size:12px;color:var(--muted);padding-top:10px;background:var(--card)}
+.clue-name{border:0;background:transparent;color:var(--ink);font-size:14px;font-weight:600;text-align:left;padding:6px 4px;cursor:pointer;width:100%;min-width:92px;max-width:150px;white-space:normal}
+.clue-name.out{text-decoration:line-through;color:var(--muted);font-weight:400}
+.clue-name.star{color:var(--accent);font-weight:800}
+.clue-cell{width:100%;min-width:36px;height:36px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:18px;font-weight:800;cursor:pointer}
+.clue-cell.m-x{color:var(--neg)}
+.clue-cell.m-o{color:var(--pos);background:var(--hi)}
+.clue-cell.m-q{color:#b7791f}
+.clue-memo{display:block;margin-top:12px;font-size:12px;color:var(--muted);font-weight:600}
+.clue-memo textarea,.clue-edit textarea{display:block;width:100%;margin:4px 0 10px;font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);resize:vertical}
+.clue-edit label{display:block;font-size:13px;font-weight:600;margin-top:8px}
+.clue-note.hidden .clue-body{filter:blur(10px);pointer-events:none;user-select:none}
+@media (min-width:600px){.clue-cell{height:42px;min-width:48px}.clue-name{font-size:15px}.clue-edit{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.clue-edit .btn{grid-column:1/-1}}
 /* 로그인 / 게스트 */
 .login{max-width:420px;margin:40px auto}
 .login .btn.block{margin-top:12px}

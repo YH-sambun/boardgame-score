@@ -21,6 +21,16 @@ service cloud.firestore {
         && request.resource.data.ownerUid == resource.data.ownerUid
         && (isOwner() || (isViewer() && request.resource.data.viewerEmails == resource.data.viewerEmails));
       allow delete: if signedIn() && isOwner();
+
+      // 개인 노트(클루 추리 노트): 본인 것만 읽고 쓸 수 있음. 쓰기는 그 게임을 볼 수 있는 계정만
+      match /notes/{noteUid} {
+        function canSeeGame() {
+          let g = get(/databases/$(database)/documents/sessions/$(id)).data;
+          return g.ownerUid == request.auth.uid || myEmail() in g.viewerEmails;
+        }
+        allow read, delete: if signedIn() && request.auth.uid == noteUid;
+        allow create, update: if signedIn() && request.auth.uid == noteUid && canSeeGame();
+      }
     }
   }
 }
