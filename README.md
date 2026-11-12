@@ -35,7 +35,7 @@
 ## 데이터 구조 (Firestore)
 - `users/{uid}/players/{id}`: `{ name, email, createdAt }` — 내 참가자 목록
 - `users/{uid}/meta/settings`: `{ statsResetAt: { [gameId]: ms } }` — 전적 초기화 시점
-- `sessions/{id}/notes/{uid}`: `{ marks:{ [항목]: { [자리]: 'x'|'o'|'?' } }, rows:{ [항목]: 'out'|'star' }, memo, updatedAt }` — 클루 개인 노트, 본인만 읽기/쓰기
+- `users/{uid}/notes/{sessionId}`: `{ marks:{ [항목]: { [자리]: 'x'|'o'|'?' } }, rows:{ [항목]: 'out'|'star' }, memo, updatedAt }` — 클루 개인 노트, 본인만 읽기/쓰기
 - `sessions/{id}`: `{ gameId, ownerUid, ownerName, viewerEmails, players:[{id,name,email}], playerIds, settings, data, totals, status:'playing'|'finished', createdAt, updatedAt, finishedAt }`
   - `viewerEmails` 에 든 계정은 읽기/점수 수정 가능, 삭제·공유대상 변경은 `ownerUid` 만
   - 스컬킹 `data`: `{ rounds:[{ bids:[], wins:[], bonus:[] }], current }`, `settings`: `{ startRound, endRound }`
@@ -115,10 +115,9 @@
 ## 클루 추리 노트
 - 카드 구성: **오리지널**, **오리지널 (2016~, 화이트 부인 → 오키드 박사)**, **심슨 (1판)**, **심슨 (2판)** 중 선택하거나 '목록 편집'으로 직접 입력 (함께하는 모두가 같은 목록을 씀). 심슨 1판·2판은 용의자만 다르고 도구·장소는 같습니다.
 - 내 추리 노트: 칸을 누를 때마다 ✗(없음) → ✓(가짐) → ?(의심) → 빈칸, 항목 이름을 누르면 취소선 → ⭐(정답 후보). 메모 칸과 '가리기' 버튼이 있습니다.
-- 노트는 `sessions/{id}/notes/{내 uid}` 에 저장되어 **본인만** 볼 수 있습니다. 게임을 만든 사람 화면에서도 다른 사람 노트는 보이지 않습니다.
+- 노트는 `users/{내 uid}/notes/{게임 id}` 에 저장되어 (기존 '내 계정 전용' 규칙 적용, 규칙 추가 게시 불필요) **본인만** 볼 수 있습니다. 게임을 만든 사람 화면에서도 다른 사람 노트는 보이지 않습니다.
 - 다른 사람이 자기 폰에서 노트를 쓰려면 참가자에 그 사람의 Google 이메일을 연결해 두면 됩니다.
 - 게임 종료 시 정답을 맞힌 사람을 고르면 전적에 1등으로 기록됩니다.
-- **`firestore.rules` 를 Firebase 콘솔에 다시 게시해야** 노트 저장이 됩니다.
 
 ## 체스
 새 게임에서 참가자를 **1명** 고르면 컴퓨터와, **2명** 고르면 사람끼리 둡니다.
