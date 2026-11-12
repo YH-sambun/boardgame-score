@@ -81,6 +81,8 @@ export default {
     const readonly = session.status === 'finished';
 
     const start = startOf(session);
+    // 열려 있는 숫자 버튼 줄: { pi, k } (k = 'bids' | 'wins')
+    let open = null;
     const draw = () => {
       const ri = d.current;
       const roundNo = start + ri;
@@ -106,8 +108,8 @@ export default {
             <div class="prow" data-p="${pi}">
               <div class="pname">${esc(p.name)}<span class="ptotal">${totals[pi]}점</span></div>
               <div class="fields">
-                ${stepper('예측', 'bids', pi, r.bids[pi], roundNo, readonly)}
-                ${stepper('획득', 'wins', pi, r.wins[pi], roundNo, readonly)}
+                ${numField('예측', 'bids', pi, r.bids[pi], open, readonly)}
+                ${numField('획득', 'wins', pi, r.wins[pi], open, readonly)}
                 <div class="field bonus">
                   <label>보너스</label>
                   <div class="bonus-box">
@@ -117,6 +119,7 @@ export default {
                 </div>
                 <div class="rscore ${s == null ? '' : s >= 0 ? 'pos' : 'neg'}">${s == null ? '–' : (s > 0 ? '+' : '') + s}</div>
               </div>
+              ${open && open.pi === pi ? numPad(open.k, pi, r[open.k][pi], roundNo, p.name) : ''}
               <div class="chips hidden" data-chips="${pi}">
                 ${BONUS_CHIPS.map((c) => `<button class="chip" data-chip="${c.value}" data-p="${pi}">${c.label} +${c.value}</button>`).join('')}
                 <button class="chip ghost" data-chip="reset" data-p="${pi}">0으로</button>
@@ -150,25 +153,29 @@ export default {
         </div>`;
     };
 
+    // 숫자 버튼 줄이 화면 밖에 있으면 보이도록 스크롤
+    const showPad = () => root.querySelector('.numpad')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
     root.onclick = (e) => {
       const t = e.target.closest('button, tr[data-round]');
       if (!t) return;
-      if (t.dataset.round != null) { d.current = Number(t.dataset.round); ctx.save(); draw(); return; }
-      if (t.dataset.nav) { d.current = Math.max(0, Math.min(d.rounds.length - 1, d.current + Number(t.dataset.nav))); ctx.save(); draw(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+      if (t.dataset.round != null) { open = null; d.current = Number(t.dataset.round); ctx.save(); draw(); return; }
+      if (t.dataset.nav) { open = null; d.current = Math.max(0, Math.min(d.rounds.length - 1, d.current + Number(t.dataset.nav))); ctx.save(); draw(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
       if (t.dataset.act === 'finish') { ctx.finish(); return; }
       if (readonly) return;
       const r = d.rounds[d.current];
       const pi = Number(t.dataset.p);
-      if (t.dataset.step) {
+      if (t.dataset.open) {
+        const k = t.dataset.open;
+        open = open && open.pi === pi && open.k === k ? null : { pi, k };
+        draw(); showPad(); return;
+      }
+      if (t.dataset.num != null) {
         const k = t.dataset.k;
-        const max = start + d.current;
-        const step = Number(t.dataset.step);
-        const cur = r[k][pi];
-        let v;
-        if (cur == null) v = step > 0 ? 0 : null;          // 빈칸 → 0
-        else if (cur === 0 && step < 0) v = null;            // 0에서 − → 빈칸(미입력)
-        else v = Math.max(0, Math.min(max, cur + step));
-        r[k][pi] = v; ctx.save(); draw(); return;
+        r[k][pi] = t.dataset.num === 'clear' ? null : Number(t.dataset.num);
+        // 다음 사람 같은 칸으로 자동 이동, 마지막 사람이면 닫기
+        open = t.dataset.num !== 'clear' && pi < players.length - 1 ? { pi: pi + 1, k } : null;
+        ctx.save(); draw(); showPad(); return;
       }
       if (t.dataset.act === 'bonus-menu') { root.querySelector(`[data-chips="${pi}"]`).classList.toggle('hidden'); return; }
       if (t.dataset.chip) {
@@ -188,13 +195,20 @@ export default {
   },
 };
 
-function stepper(label, k, pi, v, max, readonly) {
+function numField(label, k, pi, v, open, readonly) {
+  const isOpen = open && open.pi === pi && open.k === k;
   return `<div class="field">
     <label>${label}</label>
-    <div class="stepper">
-      ${readonly ? '' : `<button class="mini" data-step="-1" data-k="${k}" data-p="${pi}" ${v == null ? 'disabled' : ''}>−</button>`}
-      <span class="val ${v == null ? 'empty' : ''}">${v == null ? '·' : v}</span>
-      ${readonly ? '' : `<button class="mini" data-step="1" data-k="${k}" data-p="${pi}" ${v != null && v >= max ? 'disabled' : ''}>＋</button>`}
+    <button class="numfield ${isOpen ? 'open' : ''} ${v == null ? 'empty' : ''}" data-open="${k}" data-p="${pi}" ${readonly ? 'disabled' : ''}>${v == null ? '·' : v}</button>
+  </div>`;
+}
+
+function numPad(k, pi, v, max, name) {
+  return `<div class="numpad">
+    <div class="numpad-label">${esc(name)} · ${k === 'bids' ? '예측' : '획득'} 승수</div>
+    <div class="numpad-keys">
+      ${Array.from({ length: max + 1 }, (_, n) => `<button class="key ${v === n ? 'on' : ''}" data-num="${n}" data-k="${k}" data-p="${pi}">${n}</button>`).join('')}
+      <button class="key ghost" data-num="clear" data-k="${k}" data-p="${pi}">지우기</button>
     </div>
   </div>`;
 }

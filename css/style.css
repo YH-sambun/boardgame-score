@@ -124,3 +124,20 @@ tfoot td{font-size:16px;border-bottom:0}
   .stepper .val{font-size:22px}
   .pill{min-width:42px;height:42px}
 }
+
+/* 숫자 버튼 입력 */
+.numfield{width:100%;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;cursor:pointer}
+.numfield.empty{color:var(--muted)}
+.numfield.open{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.numfield:disabled{cursor:default;opacity:1}
+.numpad{grid-column:1/-1;margin-top:8px;padding:8px;border-radius:12px;background:var(--hi)}
+.numpad-label{font-size:12px;color:var(--muted);margin-bottom:6px}
+.numpad-keys{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.key{height:46px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:20px;font-weight:700;cursor:pointer}
+.key.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.key.ghost{font-size:13px;font-weight:600;color:var(--muted);grid-column:span 2}
+@media (min-width:600px){
+  .numfield{height:50px;font-size:24px}
+  .numpad-keys{grid-template-columns:repeat(auto-fill,minmax(54px,1fr))}
+  .key{height:52px}
+}
