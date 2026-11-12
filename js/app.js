@@ -1,5 +1,5 @@
-import { store } from './store.js?v=202611120746';
-import { GAMES, getGame } from './games/index.js?v=202611120746';
+import { store } from './store.js?v=202611120749';
+import { GAMES, getGame } from './games/index.js?v=202611120749';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -312,7 +312,7 @@ async function route() {
     else viewNotFound();
   } catch (err) {
     console.error(err);
-    $app.innerHTML = `<section class="card"><h2>오류</h2><p>${esc(err.message)}</p><p class="muted">Firestore 보안 규칙에 내 계정이 허용돼 있는지 확인해 주세요.</p></section>`;
+    $app.innerHTML = `<section class="card"><h2>오류</h2><p>${esc(err.message)}</p><p class="muted">${/permission/i.test(err.message) ? 'Firebase 콘솔 → Firestore → 규칙 탭에 저장소의 최신 firestore.rules 내용을 붙여넣고 게시했는지 확인해 주세요. 게시 후 1분쯤 뒤 새로고침하면 돼요.' : '잠시 후 새로고침해 주세요.'}</p></section>`;
   }
 }
 
