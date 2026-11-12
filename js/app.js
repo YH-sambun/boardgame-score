@@ -1,5 +1,5 @@
-import { store } from './store.js?v=202611120937';
-import { GAMES, getGame } from './games/index.js?v=202611120937';
+import { store } from './store.js?v=202611121007';
+import { GAMES, getGame } from './games/index.js?v=202611121007';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -19,6 +19,10 @@ function toast(msg) {
 }
 
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// 실시간 구독(온라인 체스 등): 화면을 옮기면 끊음
+let unwatch = null;
+function stopWatching() { if (unwatch) { unwatch(); unwatch = null; } }
 
 // ───────── 화면들 ─────────
 async function viewHome() {
@@ -122,7 +126,7 @@ async function viewNew(gameId) {
     $app.innerHTML = `
       <section class="card">
         <h2>${g.emoji} ${g.name} 새 게임 <a class="more" href="#/help/${g.id}">📖 룰·팁</a></h2>
-        <p class="muted">참가자를 순서대로 눌러 주세요 (${g.minPlayers}~${g.maxPlayers}명). 누른 순서가 자리 순서가 됩니다.</p>
+        <p class="muted">${g.pickHint ? esc(g.pickHint) : `참가자를 순서대로 눌러 주세요 (${g.minPlayers}~${g.maxPlayers}명). 누른 순서가 자리 순서가 됩니다.`}</p>
         <div class="chips">
           ${players.map((p) => { const i = selected.indexOf(p.id); return `<button class="chip ${i >= 0 ? 'on' : ''}" data-pick="${p.id}">${i >= 0 ? `<i>${i + 1}</i>` : ''}${esc(p.name)}</button>`; }).join('')}
         </div>
@@ -141,7 +145,8 @@ async function viewNew(gameId) {
       draw(); return;
     }
     if (e.target.id === 'start') {
-      const ps = selected.map((id) => players.find((p) => p.id === id)).map((p) => ({ id: p.id, name: p.name, email: p.email || null }));
+      const picked = selected.map((id) => players.find((p) => p.id === id)).map((p) => ({ id: p.id, name: p.name, email: p.email || null }));
+      const ps = g.preparePlayers ? g.preparePlayers(picked, settings) : picked; // 예: 체스 1명이면 컴퓨터 추가
       const now = Date.now();
       const s = { gameId: g.id, players: ps, playerIds: ps.map((p) => p.id), settings: { ...settings }, status: 'playing', createdAt: now, updatedAt: now };
       s.data = g.initData(ps, s.settings);
@@ -173,6 +178,7 @@ async function viewNew(gameId) {
 }
 
 async function viewPlay(id) {
+  stopWatching();
   const s = await store.getSession(id);
   if (!s) return viewNotFound();
   const g = getGame(s.gameId);
@@ -212,7 +218,12 @@ async function viewPlay(id) {
       note,
       me: store.user,
       save: () => { s.totals = g.computeTotals(s); persist(); },
-      finish: async () => {
+      online: store.mode === 'firebase' && !store.guest && !!store.user,
+      toast,
+      reload: () => viewPlay(s.id),
+      // 다른 기기에서 바뀐 내용을 실시간으로 받기 (Firestore 일 때만)
+      watch: store.watchSession && store.mode === 'firebase' ? (cb) => { stopWatching(); unwatch = store.watchSession(s.id, cb); } : null,
+      finish: async ({ ask = true } = {}) => {
         s.totals = g.computeTotals(s);
         // 게임 모듈이 incompleteCount(session) 를 주면 그 값을 사용 (roundLabel: '판', '국' 등. 없으면 '빈 칸' 단위)
         const incomplete = g.incompleteCount ? g.incompleteCount(s) : (s.data.rounds || []).filter((r) => r.wins?.some((w) => w == null)).length;
@@ -220,7 +231,7 @@ async function viewPlay(id) {
         const josa = (unit.charCodeAt(unit.length - 1) - 0xac00) % 28 ? '이' : '가'; // 받침 있으면 '이'
         const what = g.incompleteCount && !g.roundLabel ? '비어 있는 칸이' : `입력이 덜 된 ${unit}${josa}`;
         const msg = incomplete ? `아직 ${what} ${incomplete}개 있어요. 그래도 종료하고 전적에 기록할까요?` : '게임을 종료하고 전적에 기록할까요?';
-        if (!confirm(msg)) return;
+        if (ask && !confirm(msg)) return;
         s.status = 'finished'; s.finishedAt = Date.now();
         await store.updateSession(s.id, { data: s.data, totals: s.totals, status: s.status, finishedAt: s.finishedAt, updatedAt: Date.now() });
         toast('전적에 기록했어요');
@@ -266,10 +277,13 @@ export function computeStats(sessions, gameId, { since = 0, activeIds = null } =
       if (!s.shared && activeIds && p.id && !activeIds.has(p.id)) return;
       // 이메일이 연결된 참가자는 계정이 달라도 같은 사람으로 집계
       const key = p.email ? 'e:' + p.email.toLowerCase() : (s.shared ? `x:${s.ownerUid}:${p.id || p.name}` : p.id || p.name);
-      const st = map.get(key) || { name: p.name, played: 0, wins: 0, sum: 0, best: -Infinity, rankSum: 0 };
+      const st = map.get(key) || { name: p.name, played: 0, wins: 0, draws: 0, sum: 0, best: -Infinity, rankSum: 0 };
       st.name = p.name; st.played++; st.sum += s.totals[i]; st.rankSum += rk[i];
       st.best = Math.max(st.best, s.totals[i]);
-      if (rk[i] === 1) st.wins++;
+      // 모두 같은 점수(체스 무승부 등)는 게임에 따라 1등으로 치지 않고 무승부로 셈
+      const tie = getGame(s.gameId)?.tieIsNoWin && rk.every((r) => r === 1);
+      if (tie) st.draws++;
+      else if (rk[i] === 1) st.wins++;
       map.set(key, st);
     });
   }
@@ -290,10 +304,13 @@ async function viewStats() {
     <h2>전적</h2>
     <div class="chips">${GAMES.map((x) => `<a class="chip ${x.id === gameId ? 'on' : ''}" href="#/stats?game=${x.id}">${x.emoji} ${x.name}</a>`).join('')}</div>
     <p class="muted">${g.name} 완료 게임 ${games}판${since ? ` · ${fmtDate(since)} 초기화 이후` : ''}</p>
-    ${stats.length ? `<div class="table-wrap"><table class="stats">
+    ${stats.length ? (g.tieIsNoWin ? `<div class="table-wrap"><table class="stats">
+      <thead><tr><th>#</th><th>이름</th><th>판수</th><th>승</th><th>무</th><th>패</th><th>승률</th></tr></thead>
+      <tbody>${stats.map((st, i) => `<tr><td>${i + 1}</td><td><b>${esc(st.name)}</b></td><td>${st.played}</td><td>${st.wins}</td><td>${st.draws}</td><td>${st.played - st.wins - st.draws}</td><td>${Math.round(st.winRate * 100)}%</td></tr>`).join('')}</tbody>
+    </table></div>` : `<div class="table-wrap"><table class="stats">
       <thead><tr><th>#</th><th>이름</th><th>판수</th><th>1등</th><th>승률</th><th>평균 점수</th><th>최고</th><th>평균 등수</th></tr></thead>
       <tbody>${stats.map((st, i) => `<tr><td>${i + 1}</td><td><b>${esc(st.name)}</b></td><td>${st.played}</td><td>${st.wins}</td><td>${Math.round(st.winRate * 100)}%</td><td>${Math.round(st.avg)}</td><td>${st.best}</td><td>${st.avgRank.toFixed(1)}</td></tr>`).join('')}</tbody>
-    </table></div>` : '<p class="muted">완료된 게임이 생기면 여기 쌓여요.</p>'}
+    </table></div>`) : '<p class="muted">완료된 게임이 생기면 여기 쌓여요.</p>'}
     <div class="stats-actions">
       <button class="btn ghost small danger" id="reset">${g.name} 전적 초기화</button>
       ${since ? '<button class="btn ghost small" id="undo">초기화 취소</button>' : ''}
@@ -379,6 +396,7 @@ async function offerGuestImport() {
 // ───────── 라우터 ─────────
 async function route() {
   $app.onclick = $app.onsubmit = $app.onchange = null;
+  stopWatching();
   if (store.mode === 'firebase' && !store.user) return viewLogin();
   const [path] = location.hash.replace(/^#/, '').split('?');
   const parts = path.split('/').filter(Boolean);

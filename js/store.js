@@ -1,5 +1,5 @@
 // 저장소: Firebase 설정이 있으면 Firestore, 없으면 localStorage
-import { firebaseConfig } from './firebase-config.js?v=202611120937';
+import { firebaseConfig } from './firebase-config.js?v=202611121007';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -33,6 +33,7 @@ function localStore() {
     async getNote(sid) { return load().notes[sid] || null; },
     async setNote(sid, note) { const db = load(); db.notes[sid] = note; persist(db); },
     async listSessions() { return load().sessions.sort((a, b) => b.createdAt - a.createdAt); },
+    watchSession() { return () => {}; },
   };
 }
 
@@ -132,6 +133,10 @@ function firestoreStore() {
     },
     // 개인 노트: sessions/{id}/notes/{내 uid} — 규칙상 본인만 읽고 쓸 수 있음
     async getNote(sid) { const d = await fs.getDoc(nref(sid)); return d.exists() ? d.data() : null; },
+    // 게임 문서 실시간 구독 (온라인 체스). 끊는 함수를 돌려줌
+    watchSession(id, cb) {
+      return fs.onSnapshot(sref(id), (d) => { if (d.exists()) cb(withFlags(d)); }, (e) => console.error('watch', e));
+    },
     async setNote(sid, note) { await fs.setDoc(nref(sid), note); },
     async listSessions() {
       const email = normEmail(s.user.email);
@@ -203,7 +208,7 @@ function hybridStore() {
     },
   };
   for (const k of ['listPlayers', 'addPlayer', 'deletePlayer', 'renamePlayer', 'setPlayerEmail', 'getMeta', 'setMeta',
-    'createSession', 'getSession', 'updateSession', 'deleteSession', 'listSessions', 'getNote', 'setNote']) {
+    'createSession', 'getSession', 'updateSession', 'deleteSession', 'listSessions', 'getNote', 'setNote', 'watchSession']) {
     h[k] = (...a) => active()[k](...a);
   }
   return h;
