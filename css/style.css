@@ -467,3 +467,72 @@ table.h2h td.self{background:var(--chip)}
 .sync-note{font-size:12px;margin:-6px 2px 0}
 .badge.pending{background:#c98a12}
 @media (prefers-color-scheme:dark){.sync-card.warn-card{background:#3a2f17;color:#f3d18a;border-color:#5a4720}}
+
+/* ───── 인터페이스 정리: ? 설명 · 드롭다운 · ⋯ 메뉴 · 첫 화면 ───── */
+.hdr-right{display:flex;align-items:center;gap:8px}
+.qbtn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:none;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--muted);font-size:13px;font-weight:800;line-height:1;cursor:pointer;text-decoration:none;padding:0;font-family:inherit}
+.qbtn:hover,.qbtn.on{border-color:var(--accent);color:var(--accent)}
+.hdr-q{width:30px;height:30px;font-size:15px;border-color:#40506a;color:#fff}
+.hdr-q:hover{border-color:#fff;color:#fff}
+.tip{background:var(--hi);border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:14px;line-height:1.6}
+.tip p{margin:0 0 6px}.tip p:last-child{margin-bottom:0}
+.tip a{color:var(--accent);font-weight:600}
+.card h2 .qbtn,.card h3 .qbtn{margin-left:2px}
+
+select{font:inherit;font-size:15px;font-weight:600;padding:8px 32px 8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);cursor:pointer;-webkit-appearance:none;appearance:none;max-width:100%;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 17px) 52%,calc(100% - 12px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.card-head h2{margin:0}
+.toolbar{display:flex;align-items:center;gap:8px;margin:10px 0}
+.toolbar .dd{margin-left:auto}
+.pick{display:inline-flex;align-items:center;gap:8px}
+.pick span{font-size:13px;color:var(--muted)}
+.setting > span{min-width:96px}
+.setting select{min-width:120px}
+.pick-count{margin:0 0 4px}
+
+/* ⋯ 메뉴 */
+details.dd{position:relative;display:inline-block}
+details.dd > summary{list-style:none;cursor:pointer;user-select:none}
+details.dd > summary::-webkit-details-marker{display:none}
+details.dd[open] > summary{background:var(--chip)}
+.dd-menu{position:absolute;top:calc(100% + 4px);left:0;min-width:170px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:4px;z-index:40}
+.dd.right .dd-menu{left:auto;right:0}
+.dd-menu a,.dd-menu button{display:block;width:100%;text-align:left;padding:10px 12px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:15px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.dd-menu a:hover,.dd-menu button:hover{background:var(--chip)}
+.dd-menu .danger{color:var(--neg)}
+.dd-text{padding:8px 12px 10px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:4px;white-space:nowrap}
+header details.dd > summary{color:#fff;border-color:#40506a;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+header details.dd[open] > summary{background:#2b3a4e}
+.player-row .dd{margin-left:auto}
+
+/* 첫 화면: 두 갈래 */
+.mode-pick{display:grid;gap:12px;margin:12px 0}
+.mode-card{display:flex;flex-direction:column;justify-content:flex-end;gap:4px;min-height:clamp(150px,30vh,260px);padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--card);text-decoration:none;position:relative;overflow:hidden}
+.mode-card:hover{border-color:var(--accent)}
+.mode-card b{font-size:26px;letter-spacing:-.5px}
+.mode-card .muted{font-size:14px}
+.mode-card::after{content:"›";position:absolute;right:20px;bottom:18px;font-size:34px;line-height:1;color:var(--muted)}
+.mode-icons{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:auto}
+.mode-icons .gmark{width:40px;height:40px;font-size:28px}
+.mode-play{border-top:4px solid var(--accent)}
+.mode-record{border-top:4px solid var(--ink)}
+.mode-seg{margin:12px 0 0}
+.modal{position:relative}
+.modal-q{position:absolute;top:14px;right:14px;width:30px;height:30px;font-size:15px}
+@media (min-width:600px){
+  .mode-pick{grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
+  .mode-card{min-height:clamp(220px,38vh,340px);padding:28px}
+  .mode-card b{font-size:32px}
+  .mode-icons .gmark{width:48px;height:48px;font-size:34px}
+  .qbtn{width:26px;height:26px}
+  .mode-seg{max-width:420px}
+}
+@media (min-width:1100px){
+  .mode-pick{max-width:1000px;margin:32px auto 12px}
+  .mode-pick + .card{max-width:1000px;margin:12px auto}
+  .games-layout.two{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;align-items:start}
+  .game-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+}
+.dd > summary.dots{font-size:20px;line-height:1;padding:4px 10px 8px;letter-spacing:1px}
+@media (max-width:599px){.mode-card{min-height:clamp(140px,24vh,210px)}}

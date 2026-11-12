@@ -1,4 +1,5 @@
 // 도구: 선 뽑기 · 타이머 · 주사위/코인. 모두 이 기기 안에서만 동작하고 저장하지 않음
+import { tipBtn, tipBody, selectHtml } from './ui.js?v=202611121222';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rand = (n) => Math.floor(Math.random() * n);
 const TABS = [['pick', '선 뽑기'], ['timer', '타이머'], ['dice', '주사위·코인']];
@@ -72,7 +73,7 @@ function pickTool(root, players) {
       </div>
       ${st.pickMode === 'finger' ? `<div class="finger-pad" id="pad"><p class="muted">다 같이 화면에 손가락을 올리고 기다리세요.<br>잠시 뒤 한 명이 뽑혀요.</p></div>`
       : `<p class="muted">뽑을 사람을 고르고 돌리기를 누르세요.</p>
-        <div class="chips" id="names">${players.map((p) => `<button class="chip ${st.picked.includes(p.id) ? 'on' : ''}" data-p="${p.id}">${esc(p.name)}</button>`).join('') || '<span class="muted">참가자 탭에서 참가자를 먼저 추가해 주세요.</span>'}</div>
+        <div class="chips" id="names">${players.map((p) => `<button class="chip ${st.picked.includes(p.id) ? 'on' : ''}" data-p="${p.id}">${esc(p.name)}</button>`).join('') || '<span class="muted">오른쪽 위 메뉴 → 참가자 관리에서 참가자를 먼저 추가해 주세요.</span>'}</div>
         <div class="roulette" id="rl">${st.picked.map((id) => `<span data-r="${id}">${esc(players.find((p) => p.id === id)?.name)}</span>`).join('')}</div>
         <button class="btn primary block" id="spin" ${st.picked.length < 2 ? 'disabled' : ''}>돌리기</button>`}`;
     if (st.pickMode === 'finger') finger(root.querySelector('#pad'));
@@ -156,17 +157,17 @@ function timerTool(root, players) {
   const clockNow = () => C.times.map((t, i) => (C.run && i === C.cur ? t + (Date.now() - C.at) : t));
   const draw = () => {
     const ct = clockNow();
+    const sandOpts = [...new Set([30, 60, 90, 120, 180, 300, 600, 900, 1200, 1800, S.total])].sort((a, b) => a - b).map((x) => [x, x < 60 ? `${x}초` : x % 60 ? `${Math.floor(x / 60)}분 ${x % 60}초` : `${x / 60}분`]);
     root.innerHTML = `<h3>모래시계</h3>
-      <div class="chips">${[30, 60, 120, 180, 300].map((s) => `<button class="chip ${S.total === s ? 'on' : ''}" data-sand="${s}">${s < 60 ? s + '초' : s / 60 + '분'}</button>`).join('')}
-        <label class="chip ghost">직접 <input type="number" id="sandMin" min="1" max="99" placeholder="분" style="width:56px;padding:2px 4px"></label></div>
+      <label class="setting"><span>시간</span>${selectHtml('id="sandSel"', sandOpts, S.total)}</label>
       <div class="big-time ${sandLeft() <= 0 ? 'over' : ''}" id="sandT">${mmss(sandLeft())}</div>
       <div class="bar"><span id="sandBar" style="width:${Math.max(0, sandLeft() / (S.total * 1000)) * 100}%"></span></div>
       <div class="row-btns"><button class="btn primary" data-act="sand">${S.run ? '멈춤' : sandLeft() <= 0 ? '다시' : '시작'}</button><button class="btn" data-act="sandReset">처음으로</button></div>
 
-      <h3 class="sub-h">턴 시계</h3>
-      <p class="muted">화면을 누르면 다음 사람으로 넘어가요. 1인당 제한 시간을 정하면 남은 시간이, 0이면 쓴 시간이 보여요.</p>
+      <h3 class="sub-h">턴 시계 ${tipBtn()}</h3>
+      ${tipBody('<p>화면을 누르면 다음 사람으로 넘어가요. 1인당 제한 시간을 정하면 남은 시간이, 제한 없음이면 쓴 시간이 보여요.</p>')}
       <div class="chips">${players.map((p) => `<button class="chip ${C.names.includes(p.name) ? 'on' : ''}" data-cn="${esc(p.name)}">${esc(p.name)}</button>`).join('')}</div>
-      <label class="setting">1인당 제한(분) <input type="number" id="per" min="0" max="120" value="${C.per}"></label>
+      <label class="setting"><span>1인당 제한</span>${selectHtml('id="per"', [...new Set([0, 1, 2, 3, 5, 10, 15, 20, 30, 60, C.per])].sort((a, b) => a - b).map((m) => [m, m ? `${m}분` : '제한 없음']), C.per)}</label>
       ${C.names.length ? `<button class="turn-pad ${C.run ? 'run' : ''}" data-act="next">
           <span class="who">${esc(C.names[C.cur] || '')}</span>
           <span class="big-time ${C.per && C.per * 60000 - ct[C.cur] <= 0 ? 'over' : ''}" id="clockT">${mmss(C.per ? C.per * 60000 - ct[C.cur] : ct[C.cur])}</span>
@@ -211,7 +212,7 @@ function timerTool(root, players) {
     else if (a === 'clockReset') { resetClock(); alertedClock.clear(); draw(); }
   };
   root.onchange = (e) => {
-    if (e.target.id === 'sandMin') { const m = Math.max(1, Math.min(99, Number(e.target.value) || 1)); S.total = m * 60; S.left = S.total * 1000; S.run = false; alerted = false; draw(); }
+    if (e.target.id === 'sandSel') { S.total = Number(e.target.value) || 60; S.left = S.total * 1000; S.run = false; alerted = false; draw(); }
     if (e.target.id === 'per') { C.per = Math.max(0, Math.min(120, Number(e.target.value) || 0)); alertedClock.clear(); draw(); }
   };
   if (S.left == null || S.left === 60) S.left = S.total * 1000;
@@ -230,26 +231,26 @@ function diceTool(root) {
   const D = st.dice;
   const draw = () => {
     const total = D.vals.reduce((a, b) => a + b, 0);
-    root.innerHTML = `<h3>주사위</h3>
-      <div class="dice-opts">
-        <div class="chips">${[1, 2, 3, 4, 5, 6].map((n) => `<button class="chip ${D.n === n ? 'on' : ''}" data-n="${n}">${n}개</button>`).join('')}</div>
-        <div class="chips">${[4, 6, 8, 10, 12, 20].map((s) => `<button class="chip ${D.sides === s ? 'on' : ''}" data-s="${s}">d${s}</button>`).join('')}</div>
+    root.innerHTML = `<h3>주사위 ${tipBtn()}</h3>
+      ${tipBody('<p>굴린 뒤 주사위를 누르면 고정돼요. 고정한 주사위는 다시 굴려도 그대로예요.</p>')}
+      <div class="toolbar">
+        <label class="pick">${selectHtml('data-dn', [1, 2, 3, 4, 5, 6].map((n) => [n, `${n}개`]), D.n)}</label>
+        <label class="pick">${selectHtml('data-ds', [4, 6, 8, 10, 12, 20].map((x) => [x, `${x}면체`]), D.sides)}</label>
       </div>
       <div class="dice-tray">${Array.from({ length: D.n }, (_, i) => `<button class="die ${D.held[i] ? 'held' : ''} ${D.sides !== 6 ? 'num' : ''}" data-hold="${i}" ${D.vals[i] == null ? 'disabled' : ''}>${dieFace(D.vals[i], D.sides)}</button>`).join('')}</div>
       <p class="center dice-sum">${D.vals.length ? `합계 <b>${total}</b>` : '<span class="muted">굴리기를 누르세요</span>'}${D.held.some(Boolean) ? ' <span class="muted">· 고정한 주사위는 그대로</span>' : ''}</p>
       <div class="row-btns"><button class="btn primary" data-act="roll">굴리기</button><button class="btn" data-act="free" ${D.held.some(Boolean) ? '' : 'disabled'}>고정 풀기</button></div>
-      <p class="muted">굴린 뒤 주사위를 누르면 고정돼요.</p>
       ${D.hist.length ? `<div class="hist muted">최근: ${D.hist.map((h) => h.join('·')).join(' / ')}</div>` : ''}
 
       <h3 class="sub-h">코인</h3>
       <button class="coin ${st.coin ? 'c-' + st.coin : ''}" data-act="coin"><span>${st.coin === 'h' ? '앞' : st.coin === 't' ? '뒤' : '?'}</span></button>
-      <p class="center muted">동전을 누르면 던져요.</p>
+      <p class="center muted">동전을 눌러 던지기</p>
 
-      <h3 class="sub-h">셀레스티아 위험 주사위</h3>
-      <div class="chips">${[1, 2, 3, 4].map((n) => `<button class="chip ${st.cel.n === n ? 'on' : ''}" data-cel="${n}">${n}개</button>`).join('')}</div>
+      <h3 class="sub-h">셀레스티아 위험 주사위 ${tipBtn()}</h3>
+      ${tipBody('<p>도시 칸에 적힌 수만큼 굴려요. 나온 위험마다 선장이 맞는 장비 카드를 내야 해요.</p>')}
+      <label class="pick">${selectHtml('data-celn', [1, 2, 3, 4].map((n) => [n, `${n}개`]), st.cel.n)}</label>
       <div class="dice-tray">${Array.from({ length: st.cel.n }, (_, i) => { const v = st.cel.vals[i]; return `<span class="die cel ${v ? 'hit' : ''}">${v == null ? '?' : v || '빈 면'}</span>`; }).join('')}</div>
-      <div class="row-btns"><button class="btn primary" data-act="cel">굴리기</button></div>
-      <p class="muted">도시 칸에 적힌 수만큼 굴려요. 나온 위험마다 선장이 맞는 장비 카드를 내야 해요.</p>`;
+      <div class="row-btns"><button class="btn primary" data-act="cel">굴리기</button></div>`;
   };
   const animate = (apply, sel) => {
     let k = 0;
@@ -261,9 +262,15 @@ function diceTool(root) {
     };
     tick();
   };
+  root.onchange = (e) => {
+    const t = e.target;
+    if (t.dataset.dn != null) { D.n = Number(t.value); D.vals = []; D.held = []; draw(); }
+    else if (t.dataset.ds != null) { D.sides = Number(t.value); D.vals = []; D.held = []; draw(); }
+    else if (t.dataset.celn != null) { st.cel.n = Number(t.value); st.cel.vals = []; draw(); }
+  };
   root.onclick = (e) => {
     const b = e.target.closest('button');
-    if (!b) return;
+    if (!b || b.dataset.tip != null) return;
     if (b.dataset.n) { D.n = Number(b.dataset.n); D.vals = []; D.held = []; return draw(); }
     if (b.dataset.s) { D.sides = Number(b.dataset.s); D.vals = []; D.held = []; return draw(); }
     if (b.dataset.cel) { st.cel.n = Number(b.dataset.cel); st.cel.vals = []; return draw(); }
