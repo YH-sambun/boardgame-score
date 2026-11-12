@@ -57,7 +57,8 @@ export default {
   computeTotals(session) { return computeTotals(session).totals; },
 
   // 종료 시 '입력이 덜 된 라운드' 개수 (빈 라운드는 종료할 때 지워지므로 제외)
-  incompleteRounds(session) {
+  roundLabel: '판',
+  incompleteCount(session) {
     return session.data.rounds.filter((r) => !isDone(r) && !isEmpty(r)).length;
   },
 

@@ -1,9 +1,26 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Google로 로그인한 누구나 사용할 수 있고, 각자 자기 기록만 읽고 쓸 수 있습니다.
+    function signedIn() { return request.auth != null; }
+    function myEmail() { return request.auth.token.email; }
+
+    // 내 계정 전용 데이터 (참가자 목록, 설정, 예전 기록)
     match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // 게임 기록: 만든 사람 + 참가자에 이메일이 연결된 사람
+    match /sessions/{id} {
+      function isOwner() { return resource.data.ownerUid == request.auth.uid; }
+      function isViewer() { return myEmail() in resource.data.viewerEmails; }
+
+      allow read: if signedIn() && (isOwner() || isViewer());
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      // 만든 사람은 모두 수정, 공유받은 사람은 점수만 수정 (소유자·공유 대상은 못 바꿈)
+      allow update: if signedIn()
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && (isOwner() || (isViewer() && request.resource.data.viewerEmails == resource.data.viewerEmails));
+      allow delete: if signedIn() && isOwner();
     }
   }
 }

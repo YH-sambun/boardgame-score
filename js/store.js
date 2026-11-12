@@ -1,5 +1,5 @@
 // 저장소: Firebase 설정이 있으면 Firestore, 없으면 localStorage
-import { firebaseConfig } from './firebase-config.js?v=202611120731';
+import { firebaseConfig } from './firebase-config.js?v=202611120744';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -23,6 +23,7 @@ function localStore() {
       db.sessions.forEach((s) => s.players.forEach((p) => { if (p.id === id) p.name = name; }));
       persist(db);
     },
+    async setPlayerEmail(id, email) { const db = load(); db.players.forEach((p) => { if (p.id === id) p.email = email; }); persist(db); },
     async getMeta() { return load().meta; },
     async setMeta(patch) { const db = load(); db.meta = { ...db.meta, ...patch }; persist(db); },
     async createSession(s) { const db = load(); const n = { ...s, id: uid() }; db.sessions.push(n); persist(db); return n; },
@@ -33,11 +34,35 @@ function localStore() {
   };
 }
 
-// 데이터는 로그인한 계정별로 users/{uid}/players, users/{uid}/sessions 에 따로 저장됩니다.
+// Firestore 구조
+//  users/{uid}/players, users/{uid}/meta : 내 계정 전용
+//  sessions/{id} : 게임 기록. ownerUid(만든 사람) + viewerEmails(참가자에 연결된 이메일)
+//    → 참가자에 이메일을 연결하면 그 계정에서도 해당 게임을 보고 점수를 입력할 수 있음 (삭제는 만든 사람만)
+const normEmail = (e) => String(e || '').trim().toLowerCase();
+const viewerEmailsOf = (players) => [...new Set(players.map((p) => normEmail(p.email)).filter(Boolean))];
+
 function firestoreStore() {
   let fs, db, auth, A;
   const col = (name) => fs.collection(db, 'users', s.user.uid, name);
   const ref = (name, id) => fs.doc(db, 'users', s.user.uid, name, id);
+  const sref = (id) => fs.doc(db, 'sessions', id);
+  const withFlags = (d) => ({ id: d.id, ...d.data(), shared: d.data().ownerUid !== s.user.uid });
+  const ownSessions = async () => (await fs.getDocs(fs.query(fs.collection(db, 'sessions'), fs.where('ownerUid', '==', s.user.uid)))).docs;
+
+  // 예전 위치(users/{uid}/sessions)의 기록을 공유 가능한 위치로 한 번 옮김
+  async function migrate() {
+    const old = await fs.getDocs(col('sessions'));
+    if (old.empty) return;
+    const players = await s.listPlayers();
+    const emailOf = new Map(players.map((p) => [p.id, p.email || null]));
+    for (const d of old.docs) {
+      const x = d.data();
+      const ps = x.players.map((p) => ({ ...p, email: emailOf.get(p.id) || null }));
+      await fs.setDoc(sref(d.id), { ...x, players: ps, ownerUid: s.user.uid, ownerName: s.user.displayName || '', viewerEmails: viewerEmailsOf(ps) });
+      await fs.deleteDoc(d.ref);
+    }
+  }
+
   const s = {
     mode: 'firebase',
     user: null,
@@ -49,7 +74,13 @@ function firestoreStore() {
       db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) });
       auth = AU.getAuth(app);
     },
-    onAuth(cb) { A.onAuthStateChanged(auth, (u) => { s.user = u; cb(u); }); },
+    onAuth(cb) {
+      A.onAuthStateChanged(auth, async (u) => {
+        s.user = u;
+        if (u) { try { await migrate(); } catch (e) { console.error('migrate', e); } }
+        cb(u);
+      });
+    },
     async signIn() { await A.signInWithPopup(auth, new A.GoogleAuthProvider()); },
     async signOut() { await A.signOut(auth); },
     async listPlayers() {
@@ -62,27 +93,45 @@ function firestoreStore() {
       return { id: r.id, ...p };
     },
     async deletePlayer(id) { await fs.deleteDoc(ref('players', id)); },
+    // 내가 만든 게임 중 이 참가자가 들어간 기록의 players / viewerEmails 갱신
+    async _patchOwnSessions(id, fn) {
+      const docs = (await ownSessions()).filter((d) => (d.data().playerIds || []).includes(id));
+      await Promise.all(docs.map((d) => {
+        const ps = d.data().players.map((p) => (p.id === id ? fn(p) : p));
+        return fs.updateDoc(d.ref, { players: ps, viewerEmails: viewerEmailsOf(ps) });
+      }));
+    },
     async renamePlayer(id, name) {
       await fs.updateDoc(ref('players', id), { name });
-      // 지난 기록에 표시되는 이름도 함께 변경
-      const snap = await fs.getDocs(fs.query(col('sessions'), fs.where('playerIds', 'array-contains', id)));
-      await Promise.all(snap.docs.map((d) => fs.updateDoc(d.ref, {
-        players: d.data().players.map((p) => (p.id === id ? { ...p, name } : p)),
-      })));
+      await s._patchOwnSessions(id, (p) => ({ ...p, name }));
+    },
+    async setPlayerEmail(id, email) {
+      email = normEmail(email) || null;
+      await fs.updateDoc(ref('players', id), { email });
+      await s._patchOwnSessions(id, (p) => ({ ...p, email }));
     },
     async getMeta() { const d = await fs.getDoc(ref('meta', 'settings')); return d.exists() ? d.data() : {}; },
     async setMeta(patch) { await fs.setDoc(ref('meta', 'settings'), patch, { merge: true }); },
     async createSession(x) {
-      const data = { ...x, createdBy: s.user?.uid || null };
-      const r = await fs.addDoc(col('sessions'), data);
-      return { id: r.id, ...data };
+      const data = { ...x, ownerUid: s.user.uid, ownerName: s.user.displayName || '', viewerEmails: viewerEmailsOf(x.players) };
+      const r = await fs.addDoc(fs.collection(db, 'sessions'), data);
+      return { id: r.id, ...data, shared: false };
     },
-    async getSession(id) { const d = await fs.getDoc(ref('sessions', id)); return d.exists() ? { id: d.id, ...d.data() } : null; },
-    async updateSession(id, patch) { await fs.updateDoc(ref('sessions', id), patch); },
-    async deleteSession(id) { await fs.deleteDoc(ref('sessions', id)); },
+    async getSession(id) {
+      try { const d = await fs.getDoc(sref(id)); return d.exists() ? withFlags(d) : null; }
+      catch (e) { if (e.code === 'permission-denied') return null; throw e; }
+    },
+    async updateSession(id, patch) { await fs.updateDoc(sref(id), patch); },
+    async deleteSession(id) { await fs.deleteDoc(sref(id)); },
     async listSessions() {
-      const snap = await fs.getDocs(fs.query(col('sessions'), fs.orderBy('createdAt', 'desc')));
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const email = normEmail(s.user.email);
+      const [own, shared] = await Promise.all([
+        ownSessions(),
+        email ? fs.getDocs(fs.query(fs.collection(db, 'sessions'), fs.where('viewerEmails', 'array-contains', email))).then((x) => x.docs) : [],
+      ]);
+      const map = new Map();
+      [...own, ...shared].forEach((d) => map.set(d.id, withFlags(d)));
+      return [...map.values()].sort((a, b) => b.createdAt - a.createdAt);
     },
   };
   return s;

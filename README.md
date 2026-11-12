@@ -5,6 +5,8 @@
 - 빌드 도구 없음 (순수 HTML/JS) → GitHub Pages에 그대로 올리면 동작
 - `js/firebase-config.js` 가 비어 있으면 **이 기기(localStorage)에만 저장**, 채우면 **Firestore** 에 저장되어 모든 기기에서 공유
 - Google로 로그인한 누구나 사용 가능, 기록은 계정별로 따로 저장 (남의 기록은 볼 수 없음)
+- 참가자에 Google 이메일을 연결하면 그 사람 계정에서도 함께 한 게임을 보고 점수 입력 가능 (삭제는 만든 사람만)
+- 홈 화면에 추가하면 앱처럼 전체화면으로 실행 (PWA)
 
 ## 1. GitHub 저장소 + Pages
 1. GitHub에서 새 저장소 생성 (예: `boardgame-score`, Public)
@@ -22,13 +24,18 @@
 6. **Firestore → 규칙** 탭에 `firestore.rules` 내용을 붙여넣고 게시
 
 ## 데이터 구조 (Firestore)
-모든 데이터는 `users/{로그인 계정 uid}/` 아래에 저장됩니다.
-- `players/{id}`: `{ name, createdAt }`
-- `sessions/{id}`: `{ gameId, players:[{id,name}], playerIds, settings, data, totals, status:'playing'|'finished', createdAt, updatedAt, finishedAt }`
-  - 스컬킹 `data`: `{ rounds:[{ bids:[], wins:[], bonus:[] }], current }`
-  - 루미큐브 `data`: `{ rounds:[{ winner, left:[] }], current }` (`winner`: 승자 자리 번호, `left`: 각자 남은 타일 합)
+- `users/{uid}/players/{id}`: `{ name, email, createdAt }` — 내 참가자 목록
+- `users/{uid}/meta/settings`: `{ statsResetAt: { [gameId]: ms } }` — 전적 초기화 시점
+- `sessions/{id}`: `{ gameId, ownerUid, ownerName, viewerEmails, players:[{id,name,email}], playerIds, settings, data, totals, status:'playing'|'finished', createdAt, updatedAt, finishedAt }`
+  - `viewerEmails` 에 든 계정은 읽기/점수 수정 가능, 삭제·공유대상 변경은 `ownerUid` 만
+  - 스컬킹 `data`: `{ rounds:[{ bids:[], wins:[], bonus:[] }], current }`, `settings`: `{ startRound, endRound }`
+  - 예전 위치(`users/{uid}/sessions`)의 기록은 로그인 시 자동으로 옮겨집니다.
+   - 루미큐브 `data`: `{ rounds:[{ winner, left:[] }], current }` (`winner`: 승자 자리 번호, `left`: 각자 남은 타일 합)
 
 전적(1등 횟수, 승률, 평균 점수, 최고 점수, 평균 등수)은 완료된 `sessions` 로부터 계산합니다.
+
+## 배포할 때
+`./bump-version.sh` 를 실행하면 파일 버전 번호가 바뀌어 브라우저가 옛 파일을 쓰지 않습니다.
 
 ## 새 게임 추가하기
 `js/games/skullking.js` 를 참고해 `{ id, name, emoji, minPlayers, maxPlayers, settingsFields, initData, computeTotals, renderPlay }` 를 내보내는 모듈을 만들고 `js/games/index.js` 의 `GAMES` 에 추가하세요.
