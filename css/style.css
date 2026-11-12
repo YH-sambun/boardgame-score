@@ -141,3 +141,16 @@ tfoot td{font-size:16px;border-bottom:0}
   .numpad-keys{grid-template-columns:repeat(auto-fill,minmax(54px,1fr))}
   .key{height:52px}
 }
+
+/* 참새작 */
+.sp-block{border-top:1px solid var(--line);padding:10px 0}
+.sp-block > label{display:block;font-size:12px;color:var(--muted);font-weight:600}
+.sp-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:6px 0}
+.sp-row > span:first-child{font-size:13px;color:var(--muted);min-width:42px}
+.sp-row .chips{margin:0}
+.sp-row .stepper{width:128px}
+.sp-manual{width:84px}
+.sp-pay{margin-top:8px;padding:10px 12px;border-radius:10px;background:var(--hi);min-height:20px}
+.sp-pay:empty{display:none}
+.sp-rules{margin-top:12px}
+.sp-rules p{line-height:1.6}
