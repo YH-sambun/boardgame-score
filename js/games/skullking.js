@@ -30,12 +30,16 @@ function emptyRound(n) {
   return { bids: Array(n).fill(null), wins: Array(n).fill(null), bonus: Array(n).fill(0) };
 }
 
+// 시작 라운드 (예전 기록은 1부터)
+const startOf = (session) => Number(session.settings?.startRound) || 1;
+
 export function computeTotals(session) {
   const n = session.players.length;
+  const start = startOf(session);
   const totals = Array(n).fill(0);
   const perRound = session.data.rounds.map((r, ri) =>
     session.players.map((_, pi) => {
-      const s = scoreRound(ri + 1, r.bids[pi], r.wins[pi], r.bonus[pi]);
+      const s = scoreRound(start + ri, r.bids[pi], r.wins[pi], r.bonus[pi]);
       if (s != null) totals[pi] += s;
       return s;
     }));
@@ -50,10 +54,22 @@ export default {
   emoji: '🏴‍☠️',
   minPlayers: 2,
   maxPlayers: 8,
-  settingsFields: [{ key: 'rounds', label: '라운드 수', type: 'number', default: 10, min: 1, max: 10 }],
+  settingsFields: [
+    { key: 'startRound', label: '시작 라운드', type: 'number', default: 1, min: 1, max: 10 },
+    { key: 'endRound', label: '종료 라운드', type: 'number', default: 10, min: 1, max: 10 },
+  ],
+
+  // 시작 > 종료가 되지 않도록 보정. changed: 방금 바뀐 항목
+  normalizeSettings(st, changed) {
+    if (st.startRound > st.endRound) {
+      if (changed === 'startRound') st.endRound = st.startRound; else st.startRound = st.endRound;
+    }
+    return st;
+  },
 
   initData(players, settings) {
-    return { rounds: Array.from({ length: settings.rounds }, () => emptyRound(players.length)), current: 0 };
+    const len = settings.endRound - settings.startRound + 1;
+    return { rounds: Array.from({ length: len }, () => emptyRound(players.length)), current: 0 };
   },
 
   computeTotals(session) { return computeTotals(session).totals; },
@@ -64,9 +80,10 @@ export default {
     const d = session.data;
     const readonly = session.status === 'finished';
 
+    const start = startOf(session);
     const draw = () => {
       const ri = d.current;
-      const roundNo = ri + 1;
+      const roundNo = start + ri;
       const r = d.rounds[ri];
       const { totals, perRound } = computeTotals(session);
       const wonSum = r.wins.reduce((a, b) => a + (Number(b) || 0), 0);
@@ -74,13 +91,15 @@ export default {
 
       root.innerHTML = `
         <div class="round-tabs">
-          ${d.rounds.map((_, i) => `<button class="pill ${i === ri ? 'active' : ''} ${perRound[i].every((s) => s != null) ? 'done' : ''}" data-round="${i}">${i + 1}</button>`).join('')}
+          ${d.rounds.map((_, i) => `<button class="pill ${i === ri ? 'active' : ''} ${perRound[i].every((s) => s != null) ? 'done' : ''}" data-round="${i}">${start + i}</button>`).join('')}
         </div>
-        <section class="card">
+        <div class="play-grid">
+        <section class="card input-card">
           <div class="round-head">
             <h2>${roundNo}라운드 <small>(카드 ${roundNo}장)</small></h2>
             ${allWins && wonSum !== roundNo ? `<span class="warn">승수 합계 ${wonSum} ≠ ${roundNo}${wonSum < roundNo ? ' (크라켄?)' : ''}</span>` : ''}
           </div>
+          <div class="players-grid">
           ${players.map((p, pi) => {
             const s = perRound[ri][pi];
             return `
@@ -104,6 +123,7 @@ export default {
               </div>
             </div>`;
           }).join('')}
+          </div>
           <div class="round-nav">
             <button class="btn ghost" data-nav="-1" ${ri === 0 ? 'disabled' : ''}>◀ 이전</button>
             ${ri < d.rounds.length - 1
@@ -111,13 +131,13 @@ export default {
               : readonly ? '' : `<button class="btn primary" data-act="finish">게임 종료</button>`}
           </div>
         </section>
-        <section class="card">
+        <section class="card board-card">
           <h3>점수표</h3>
           <div class="table-wrap">
             <table class="score">
               <thead><tr><th>R</th>${players.map((p) => `<th>${esc(p.name)}</th>`).join('')}</tr></thead>
               <tbody>
-                ${d.rounds.map((rr, i) => `<tr class="${i === ri ? 'cur' : ''}" data-round="${i}"><td>${i + 1}</td>${players.map((_, pi) => {
+                ${d.rounds.map((rr, i) => `<tr class="${i === ri ? 'cur' : ''}" data-round="${i}"><td>${start + i}</td>${players.map((_, pi) => {
                   const s = perRound[i][pi];
                   const bid = rr.bids[pi];
                   return `<td>${s == null ? (bid != null ? `<span class="muted">${bid}예측</span>` : '') : `<span class="${s >= 0 ? 'pos' : 'neg'}">${s}</span><span class="muted"> ${rr.wins[pi]}/${bid}</span>`}</td>`;
@@ -126,7 +146,8 @@ export default {
               <tfoot><tr><td>합계</td>${totals.map((t) => `<td><b>${t}</b></td>`).join('')}</tr></tfoot>
             </table>
           </div>
-        </section>`;
+        </section>
+        </div>`;
     };
 
     root.onclick = (e) => {
@@ -140,7 +161,7 @@ export default {
       const pi = Number(t.dataset.p);
       if (t.dataset.step) {
         const k = t.dataset.k;
-        const max = d.current + 1;
+        const max = start + d.current;
         const step = Number(t.dataset.step);
         const cur = r[k][pi];
         let v;
