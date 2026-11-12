@@ -1,5 +1,5 @@
-import { store } from './store.js?v=202611120755';
-import { GAMES, getGame } from './games/index.js?v=202611120755';
+import { store } from './store.js?v=202611120937';
+import { GAMES, getGame } from './games/index.js?v=202611120937';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -96,6 +96,9 @@ function viewHelp(gameId) {
   </section>`;
 }
 
+// 게임 모듈이 totalLabel(total) 을 주면 숫자 대신 그 글자로 표시 (예: 클루 '정답')
+const totalText = (g, t) => (g?.totalLabel ? g.totalLabel(t) : t);
+
 function sessionRow(s) {
   const g = getGame(s.gameId);
   const rk = ranks(s.totals || []);
@@ -104,7 +107,7 @@ function sessionRow(s) {
     <div><b>${g?.emoji || ''} ${esc(g?.name || s.gameId)}</b> <span class="muted">${fmtDate(s.createdAt)}${s.settings?.startRound ? ` · ${s.settings.startRound}~${s.settings.endRound}R` : ''}</span>
       ${s.status === 'playing' ? '<span class="badge">진행 중</span>' : ''}
       ${s.shared ? `<span class="badge shared">공유받음${s.ownerName ? ' · ' + esc(s.ownerName) : ''}</span>` : ''}</div>
-    <div class="srow-players">${order.map((o) => `<span class="${o.rank === 1 && s.status === 'finished' ? 'winner' : ''}">${o.rank === 1 && s.status === 'finished' ? '👑' : ''}${esc(o.name)} ${o.total}</span>`).join('')}</div>
+    <div class="srow-players">${order.map((o) => `<span class="${o.rank === 1 && s.status === 'finished' ? 'winner' : ''}">${o.rank === 1 && s.status === 'finished' ? '👑' : ''}${esc(o.name)} ${totalText(g, o.total)}</span>`).join('')}</div>
   </a>`;
 }
 
@@ -188,7 +191,7 @@ async function viewPlay(id) {
     if (s.status !== 'finished') { box.innerHTML = ''; return; }
     const rk = ranks(s.totals);
     const order = s.players.map((p, i) => ({ name: p.name, total: s.totals[i], rank: rk[i] })).sort((a, b) => a.rank - b.rank);
-    box.innerHTML = `<section class="card result"><h3>최종 결과</h3><ol class="podium">${order.map((o) => `<li><span class="rk">${o.rank === 1 ? '👑' : o.rank + '등'}</span>${esc(o.name)}<b>${o.total}점</b></li>`).join('')}</ol></section>`;
+    box.innerHTML = `<section class="card result"><h3>최종 결과</h3><ol class="podium">${order.map((o) => `<li><span class="rk">${o.rank === 1 ? '👑' : g.totalLabel ? '' : o.rank + '등'}</span>${esc(o.name)}<b>${g.totalLabel ? g.totalLabel(o.total) : o.total + '점'}</b></li>`).join('')}</ol></section>`;
   };
 
   const persist = debounce(async () => {
@@ -196,9 +199,18 @@ async function viewPlay(id) {
     catch (err) { console.error(err); toast('저장 실패: ' + err.message); }
   }, 400);
 
+  // 개인 노트(클루 등): 내 계정에만 저장, 다른 참가자는 볼 수 없음
+  const saveNote = debounce(async (n) => {
+    try { await store.setNote(s.id, { ...n, updatedAt: Date.now() }); }
+    catch (err) { console.error(err); toast('노트 저장 실패: ' + err.message); }
+  }, 500);
+  const note = { load: () => store.getNote(s.id), save: saveNote, private: store.mode === 'firebase' };
+
   const render = () => {
     showResult();
     g.renderPlay(document.getElementById('board'), s, {
+      note,
+      me: store.user,
       save: () => { s.totals = g.computeTotals(s); persist(); },
       finish: async () => {
         s.totals = g.computeTotals(s);
