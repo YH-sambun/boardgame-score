@@ -1,7 +1,7 @@
 // 업적: 완료된 게임 기록으로 자동 계산 (따로 저장하지 않음)
 //  각 업적의 test(entries) 는 그 사람의 참가 기록(오래된 순)을 받아, 달성한 시각(ms) 또는 null 을 돌려줌
 //  entry = { s: 세션, i: 그 사람 자리, rank, n: 인원, win, draw, t: 끝난 시각 }
-import { rankedSessions, seats } from './stats.js?v=202611121216';
+import { rankedSessions, seats } from './stats.js?v=202611121222';
 
 const sum = (xs) => xs.reduce((a, b) => a + (b || 0), 0);
 const wins = (es) => es.filter((e) => e.win && e.n >= 2);

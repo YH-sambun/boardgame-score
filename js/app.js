@@ -1,9 +1,10 @@
-import { store } from './store.js?v=202611121216';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121216';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121216';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121216';
-import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121216';
-import { viewTools } from './tools.js?v=202611121216';
+import { store } from './store.js?v=202611121222';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121222';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121222';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121222';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121222';
+import { viewTools } from './tools.js?v=202611121222';
+import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611121222';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -30,27 +31,41 @@ const MODE_NAME = { record: '기록', play: '플레이' };
 const sessionMode = (s) => { const g = getGame(s.gameId); return g?.modes?.length > 1 ? (s.settings?.mode || 'record') : g?.modes?.[0]; };
 
 // ───────── 화면들 ─────────
+const MODES = [
+  { id: 'play', name: '직접 플레이', desc: '화면에서 바로 하는 게임' },
+  { id: 'record', name: '점수 기록', desc: '실물로 하고 점수만 입력' },
+];
+
+// 첫 화면: '직접 플레이' / '점수 기록' 두 개만 크게. 하던 게임이 있으면 아래에 이어 하기
 async function viewHome() {
   const sessions = await store.listSessions();
   const playing = sessions.filter((s) => s.status === 'playing');
-  const recent = sessions.filter((s) => s.status === 'finished').slice(0, 5);
+  await loadGames(playing.map((s) => s.gameId));
+  const games = (m) => GAMES.filter((g) => g.modes.includes(m));
+  $app.innerHTML = `<div class="mode-pick">${MODES.map((m) => `<a class="mode-card mode-${m.id}" href="#/games/${m.id}">
+      <span class="mode-icons">${games(m.id).map((g) => gameIcon(g)).join('')}</span>
+      <b>${m.name}</b>
+      <span class="muted">${m.desc} · ${games(m.id).length}종</span>
+    </a>`).join('')}</div>
+    ${playing.length ? `<section class="card"><h2>이어 하기</h2>${playing.map(sessionRow).join('')}</section>` : ''}`;
+}
+
+// 고른 쪽(플레이/기록)의 게임 목록
+async function viewGames(mode) {
+  const m = MODES.find((x) => x.id === mode);
+  if (!m) return viewNotFound();
+  const sessions = (await store.listSessions()).filter((s) => getGame(s.gameId)?.modes?.includes(mode) && sessionMode(s) === mode);
+  const playing = sessions.filter((s) => s.status === 'playing');
+  const recent = sessions.filter((s) => s.status === 'finished').slice(0, 3);
   await loadGames([...playing, ...recent].map((s) => s.gameId));
-  const tiles = (mode) => GAMES.filter((g) => g.modes.includes(mode)).map((g) => `<button type="button" class="game-tile" data-intro="${g.id}" data-mode="${mode}">${gameIcon(g)}<span>${g.name}</span></button>`).join('');
-  $app.innerHTML = `<div class="home-grid"><div>
-    <section class="card">
-      <h2>기록하기 <small class="muted">실물로 하고 점수만 입력</small></h2>
-      <div class="game-grid">${tiles('record')}</div>
-      <h2 class="sub-h">바로 하기 <small class="muted">화면에서 직접 플레이</small></h2>
-      <div class="game-grid">${tiles('play')}</div>
-    </section>
-    ${playing.length ? `<section class="card"><h2>진행 중</h2>${playing.map(sessionRow).join('')}</section>` : ''}
-    </div><div>
-    <section class="card">
-      <h2>최근 기록 <a class="more" href="#/history">전체 보기</a></h2>
-      ${recent.length ? recent.map(sessionRow).join('') : '<p class="muted">아직 끝난 게임이 없어요.</p>'}
-    </section>
-    <a class="card tools-link" href="#/tools"><b>도구</b><span class="muted">선 뽑기 · 타이머 · 주사위 · 코인</span></a>
-    </div></div>`;
+  const tiles = GAMES.filter((g) => g.modes.includes(mode)).map((g) => `<button type="button" class="game-tile" data-intro="${g.id}" data-mode="${mode}">${gameIcon(g)}<span>${g.name}</span></button>`).join('');
+  const side = `${playing.length ? `<section class="card"><h2>진행 중</h2>${playing.map(sessionRow).join('')}</section>` : ''}
+    ${recent.length ? `<section class="card"><h2>최근 기록 <a class="more" href="#/history">전체 보기</a></h2>${recent.map(sessionRow).join('')}</section>` : ''}`;
+  $app.innerHTML = `<div class="seg mode-seg">${MODES.map((x) => `<a class="${x.id === mode ? 'on' : ''}" href="#/games/${x.id}">${x.name}</a>`).join('')}</div>
+    <div class="games-layout ${side.trim() ? 'two' : ''}">
+      <section class="card"><h2>${m.name} <small class="muted">${m.desc}</small></h2><div class="game-grid">${tiles}</div></section>
+      ${side.trim() ? `<div>${side}</div>` : ''}
+    </div>`;
   $app.onclick = (e) => {
     const t = e.target.closest('[data-intro]');
     if (t) showIntro(t.dataset.intro, t.dataset.mode);
@@ -65,11 +80,11 @@ async function showIntro(id, mode) {
   const box = document.createElement('div');
   box.className = 'modal-back';
   box.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+      <a class="qbtn modal-q" href="#/help/${g.id}" aria-label="게임 룰과 팁">?</a>
       ${gameIcon(g, 'big')}
       <h2 id="intro-title">${g.name}${g.modes.length > 1 ? ` <small class="muted">${MODE_NAME[mode]}</small>` : ''}</h2>
       <p class="meta">${esc(gd.players || `${g.minPlayers}~${g.maxPlayers}명`)}${gd.time ? ` · ${esc(gd.time)}` : ''}</p>
       ${gd.intro ? `<p class="intro">${esc(gd.intro)}</p>` : ''}
-      <a class="help-link" href="#/help/${g.id}">게임 룰과 팁 보기</a>
       <div class="modal-actions">
         <button type="button" class="btn" data-close>취소</button>
         <button type="button" class="btn primary" data-go>시작</button>
@@ -93,8 +108,7 @@ async function viewHelp(gameId) {
   const gd = g.guide || {};
   const list = (items) => `<ul class="help-list">${items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
   $app.innerHTML = `<section class="card help">
-    <h2>도움말</h2>
-    <div class="chips">${GAMES.map((x) => `<a class="chip ${x.id === g.id ? 'on' : ''}" href="#/help/${x.id}">${x.name}</a>`).join('')}<a class="chip" href="#/tools">도구</a></div>
+    <div class="card-head"><h2>도움말</h2>${navSelect(GAMES.map((x) => [`#/help/${x.id}`, x.name]), `#/help/${g.id}`)}</div>
     <div class="help-head">
       ${gameIcon(g, 'big')}
       <div><h3>${g.name}</h3><p class="muted">${esc(gd.players || `${g.minPlayers}~${g.maxPlayers}명`)}${gd.time ? ` · ${esc(gd.time)}` : ''}</p></div>
@@ -107,7 +121,11 @@ async function viewHelp(gameId) {
     <p class="muted note">게임을 빨리 익히기 위한 요약이에요. 에디션마다 세부 규칙이 다를 수 있으니, 애매할 땐 가지고 있는 룰북을 기준으로 해 주세요.</p>
     <div class="help-start">${g.modes.map((m) => `<a class="btn primary" href="#/new/${g.id}${g.modes.length > 1 ? `?mode=${m}` : ''}">${g.name} ${g.modes.length > 1 ? MODE_NAME[m] + ' ' : ''}시작</a>`).join('')}</div>
   </section>`;
-  $app.insertAdjacentHTML('beforeend', appInfoHtml());
+}
+
+// 앱 정보 · 업데이트 (오른쪽 위 메뉴에서)
+function viewAbout() {
+  $app.innerHTML = appInfoHtml();
   bindAppInfo($app);
 }
 
@@ -136,15 +154,22 @@ async function viewNew(gameId) {
   let players = await store.listPlayers();
   const selected = [];
   const settings = Object.fromEntries(g.settingsFields.map((f) => [f.key, f.default]));
-  const fieldHtml = (f) => f.options
-    ? `<div class="setting"><span>${f.label}</span><div class="chips">${f.options.map((o) => `<button type="button" class="chip ${settings[f.key] === o.value ? 'on' : ''}" data-opt="${f.key}" data-val="${o.value}">${esc(o.label)}</button>`).join('')}</div></div>`
-    : `<label class="setting">${f.label} <input type="number" data-set="${f.key}" value="${settings[f.key]}" min="${f.min}" max="${f.max}"></label>`;
+  // 설정은 드롭다운으로 (범위가 너무 넓은 숫자만 직접 입력)
+  const fieldOpts = (f) => (f.options ? f.options.map((o) => [String(o.value), o.label])
+    : f.max - f.min <= 30 ? Array.from({ length: f.max - f.min + 1 }, (_, i) => [String(f.min + i), String(f.min + i)]) : null);
+  const fieldHtml = (f) => {
+    const opts = fieldOpts(f);
+    return `<label class="setting"><span>${f.label}</span>${opts
+      ? selectHtml(`data-set="${f.key}"`, opts, String(settings[f.key]))
+      : `<input type="number" data-set="${f.key}" value="${settings[f.key]}" min="${f.min}" max="${f.max}" inputmode="numeric">`}</label>`;
+  };
 
   const draw = () => {
     $app.innerHTML = `
       <section class="card">
-        <h2>${gameIcon(g, 'sm')} ${g.name}${g.modes.length > 1 ? ` <span class="tag">${MODE_NAME[mode]}</span>` : ''} 새 게임 <a class="more" href="#/help/${g.id}">룰·팁</a></h2>
-        <p class="muted">${g.pickHint ? esc(g.pickHint) : `참가자를 순서대로 눌러 주세요 (${g.minPlayers}~${g.maxPlayers}명). 누른 순서가 자리 순서가 됩니다.`}</p>
+        <h2>${gameIcon(g, 'sm')} ${g.name}${g.modes.length > 1 ? ` <span class="tag">${MODE_NAME[mode]}</span>` : ''} 새 게임 ${tipBtn()}</h2>
+        ${tipBody(`<p>${g.pickHint ? esc(g.pickHint) : `참가자를 순서대로 눌러 주세요 (${g.minPlayers}~${g.maxPlayers}명). 누른 순서가 자리 순서가 됩니다.`}</p><a href="#/help/${g.id}">${g.name} 룰과 팁 보기</a>`)}
+        <p class="pick-count muted">참가자 ${g.minPlayers}~${g.maxPlayers}명 · 누른 순서가 자리 순서</p>
         <div class="chips">
           ${players.map((p) => { const i = selected.indexOf(p.id); return `<button class="chip ${i >= 0 ? 'on' : ''}" data-pick="${p.id}">${i >= 0 ? `<i>${i + 1}</i>` : ''}${esc(p.name)}</button>`; }).join('')}
         </div>
@@ -192,6 +217,7 @@ async function viewNew(gameId) {
     const k = e.target.dataset.set;
     if (k) {
       const f = g.settingsFields.find((x) => x.key === k);
+      if (f.options) { settings[k] = f.options.find((o) => String(o.value) === e.target.value).value; draw(); return; }
       settings[k] = Math.max(f.min, Math.min(f.max, Number(e.target.value) || f.default));
       g.normalizeSettings?.(settings, k);
       draw();
@@ -222,9 +248,12 @@ async function viewPlay(id) {
   $app.innerHTML = `<div class="play-top">
       <h2>${gameIcon(g, 'sm')} ${g.name}${g.modes.length > 1 ? ` <span class="tag">${MODE_NAME[sessionMode(s)]}</span>` : ''} <span class="muted">${fmtDate(s.createdAt)}</span></h2>
       <div class="actions">
-        <a class="btn ghost small" href="#/help/${g.id}">룰</a>
-        ${s.status === 'finished' ? '<button class="btn ghost small" id="reopen">다시 수정</button>' : ''}
-        ${s.shared ? `<span class="badge shared">${esc(s.ownerName || '다른 계정')}님이 공유</span>` : '<button class="btn ghost small danger" id="del">삭제</button>'}
+        ${s.shared ? `<span class="badge shared">${esc(s.ownerName || '다른 계정')}님이 공유</span>` : ''}
+        ${menuHtml([
+          { href: `#/help/${g.id}`, label: '룰과 팁' },
+          s.status === 'finished' && { act: 'reopen', label: '다시 수정' },
+          !s.shared && { act: 'del', label: '이 게임 삭제', danger: true },
+        ], { cls: 'right' })}
       </div>
     </div>
     <div id="result"></div><div id="board"></div>`;
@@ -282,12 +311,13 @@ async function viewPlay(id) {
   };
   render();
 
-  const del = document.getElementById('del');
+  setHelp(g.id);
+  const del = $app.querySelector('.play-top [data-act="del"]');
   if (del) del.onclick = async () => {
     if (!confirm('이 게임 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
     await store.deleteSession(s.id); location.hash = '#/';
   };
-  const re = document.getElementById('reopen');
+  const re = $app.querySelector('.play-top [data-act="reopen"]');
   if (re) re.onclick = async () => { s.status = 'playing'; await store.updateSession(s.id, { status: 'playing' }); viewPlay(s.id); };
   $app.onclick = null; $app.onsubmit = null; $app.onchange = null;
 }
@@ -338,11 +368,7 @@ async function viewHistory() {
   const list = sessions.filter((s) => !filter || s.gameId === filter);
   await loadGames(list.map((s) => s.gameId));
   $app.innerHTML = `<section class="card">
-    <h2>전체 기록</h2>
-    <div class="chips">
-      <a class="chip ${!filter ? 'on' : ''}" href="#/history">전체</a>
-      ${GAMES.map((g) => `<a class="chip ${filter === g.id ? 'on' : ''}" href="#/history?game=${g.id}">${g.name}</a>`).join('')}
-    </div>
+    <div class="card-head"><h2>기록</h2>${navSelect([['#/history', '모든 게임'], ...GAMES.map((g) => [`#/history?game=${g.id}`, g.name])], filter ? `#/history?game=${filter}` : '#/history')}</div>
     ${list.length ? list.map(sessionRow).join('') : '<p class="muted">기록이 없어요.</p>'}
   </section>`;
   // 동기화 안내는 기록 목록 위에 따로 붙임 (게스트 기록 수를 세는 동안 목록을 먼저 보여 줌)
@@ -370,6 +396,7 @@ async function viewStats() {
   const link = (o) => { const p = new URLSearchParams({ tab, ...(gameId ? { game: gameId } : {}), ...o }); [...p.entries()].forEach(([k, v]) => { if (!v) p.delete(k); }); return '#/stats?' + p; };
 
   let body = '';
+  let tip = '';
   if (tab === 'table') {
     const stats = computeStats(sessions, gameId, { since, activeIds });
     const games = rankedSessions(sessions, { gameId, sinceMap: resetMap }).length;
@@ -381,17 +408,14 @@ async function viewStats() {
       <thead><tr><th>#</th><th>이름</th><th>판수</th><th>1등</th><th>승률</th><th>평균 점수</th><th>최고</th><th>평균 등수</th></tr></thead>
       <tbody>${stats.map((st, i) => `<tr><td>${i + 1}</td><td><b>${esc(st.name)}</b></td><td>${st.played}</td><td>${st.wins}</td><td>${Math.round(st.winRate * 100)}%</td><td>${Math.round(st.avg)}</td><td>${st.best}</td><td>${st.avgRank.toFixed(1)}</td></tr>`).join('')}</tbody>
     </table></div>`) : '<p class="muted">완료된 게임이 생기면 여기 쌓여요.</p>'}
-    <div class="stats-actions">
-      <button class="btn ghost small danger" id="reset">${g.name} 전적 초기화</button>
-      ${since ? '<button class="btn ghost small" id="undo">초기화 취소</button>' : ''}
-    </div>
-    <p class="muted">초기화해도 게임 기록은 '기록' 탭에 남아 있고, 초기화 이후 게임부터 다시 집계해요. 기록 탭에서 게임을 삭제하면 전적에서도 빠져요.</p>`;
+`;
+    tip = '<p>게임별로 끝난 판을 모아 순위를 매겨요. ⋯ 메뉴에서 전적을 초기화할 수 있어요.</p><p>초기화해도 게임 기록은 \'기록\' 탭에 남아 있고, 초기화 이후 게임부터 다시 집계해요. 기록 탭에서 게임을 삭제하면 전적에서도 빠져요.</p>';
   } else if (tab === 'h2h') {
     const { people, cell } = headToHead(sessions, { gameId: gameId || null, sinceMap: resetMap, activeIds });
     const a = q.get('a'); const b = q.get('b');
     const pair = a && b ? cell(a, b) : null;
-    body = `<p class="muted">같이 한 게임에서 누가 더 높은 순위로 끝났는지 셉니다. 칸은 <b>왼쪽 사람 기준</b> 승-패(무). 칸을 누르면 게임별로 나눠 봐요.</p>
-    ${people.length > 1 ? `<div class="table-wrap"><table class="h2h">
+    tip = '<p>같이 한 게임에서 누가 더 높은 순위로 끝났는지 셉니다. 칸은 <b>왼쪽 사람 기준</b> 승-패(무). 칸을 누르면 게임별로 나눠 봐요.</p>';
+    body = `${people.length > 1 ? `<div class="table-wrap"><table class="h2h">
       <thead><tr><th></th>${people.map((p) => `<th>${esc(p.name)}</th>`).join('')}</tr></thead>
       <tbody>${people.map((r) => `<tr><th class="cat">${esc(r.name)}</th>${people.map((c) => {
         if (r.key === c.key) return '<td class="self"></td>';
@@ -406,8 +430,8 @@ async function viewStats() {
       <tbody>${Object.entries(pair.byGame).map(([gid, x]) => `<tr><td>${esc(getGame(gid)?.name || gid)}</td><td>${x.n}</td><td>${x.w}</td><td>${x.l}</td><td>${x.d}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
   } else if (tab === 'elo') {
     const list = eloRatings(sessions, gameId, { since, activeIds });
-    body = `<p class="muted">모두 1000점에서 시작해요. 이기면 오르고 지면 내리는데, 나보다 레이팅이 높은 사람을 이기면 더 많이 올라요. 여럿이 한 게임은 순위끼리 1:1로 겨룬 것으로 계산해요.</p>
-    ${list.length ? `<div class="table-wrap"><table class="stats elo">
+    tip = '<p>모두 1000점에서 시작해요. 이기면 오르고 지면 내리는데, 나보다 레이팅이 높은 사람을 이기면 더 많이 올라요. 여럿이 한 게임은 순위끼리 1:1로 겨룬 것으로 계산해요.</p>';
+    body = `${list.length ? `<div class="table-wrap"><table class="stats elo">
       <thead><tr><th>#</th><th>이름</th><th>레이팅</th><th>최근</th><th>판수</th><th>추이</th></tr></thead>
       <tbody>${list.map((x, i) => `<tr><td>${i + 1}</td><td><b>${esc(x.name)}</b></td><td><b>${Math.round(x.rating)}</b></td><td class="${x.last > 0 ? 'pos' : x.last < 0 ? 'neg' : 'muted'}">${x.last > 0 ? '+' : ''}${Math.round(x.last)}</td><td>${x.played}</td><td>${spark(x.history)}</td></tr>`).join('')}</tbody>
     </table></div>` : '<p class="muted">두 명 이상이 함께 한 완료 게임이 생기면 여기 쌓여요.</p>'}`;
@@ -415,8 +439,8 @@ async function viewStats() {
     const ach = computeAchievements(sessions, { activeIds });
     const people = [...ach.values()].sort((x, y) => y.earned.size - x.earned.size);
     const visible = ACHIEVEMENTS.filter((x) => !gameId || x.game === gameId);
-    body = `<p class="muted">끝난 게임 기록으로 자동으로 매겨져요. 게임을 끝낼 때 새로 얻은 업적이 있으면 알려 드려요.</p>
-    ${people.length ? people.map((p) => {
+    tip = '<p>끝난 게임 기록으로 자동으로 매겨져요. 게임을 끝낼 때 새로 얻은 업적이 있으면 알려 드려요.</p>';
+    body = `${people.length ? people.map((p) => {
       const got = visible.filter((x) => p.earned.has(x.id));
       return `<div class="badge-person"><div class="bp-head"><b>${esc(p.name)}</b><span class="muted">${got.length}/${visible.length}</span></div>
         <div class="badge-row">${got.map((x) => `<span class="medal-chip got" title="${esc(x.desc)} · ${fmtDay(p.earned.get(x.id))}"><span class="medal">${esc(x.mark)}</span>${esc(x.name)}</span>`).join('') || '<span class="muted">아직 없어요</span>'}</div></div>`;
@@ -426,15 +450,19 @@ async function viewStats() {
   }
 
   $app.innerHTML = `<section class="card">
-    <h2>전적</h2>
+    <h2>전적 ${tipBtn()}</h2>
+    ${tipBody(tip)}
     <div class="seg">${STAT_TABS.map(([k, l]) => `<a class="${k === tab ? 'on' : ''}" href="#/stats?tab=${k}${gameId ? `&game=${gameId}` : ''}">${l}</a>`).join('')}</div>
-    <div class="chips">${allowAll ? `<a class="chip ${!gameId ? 'on' : ''}" href="#/stats?tab=${tab}">전체</a>` : ''}${GAMES.map((x) => `<a class="chip ${x.id === gameId ? 'on' : ''}" href="#/stats?tab=${tab}&game=${x.id}">${x.name}</a>`).join('')}</div>
+    <div class="toolbar">
+      ${navSelect([...(allowAll ? [[`#/stats?tab=${tab}`, '모든 게임']] : []), ...GAMES.map((x) => [`#/stats?tab=${tab}&game=${x.id}`, x.name])], gameId ? `#/stats?tab=${tab}&game=${gameId}` : `#/stats?tab=${tab}`)}
+      ${tab === 'table' ? menuHtml([{ act: 'reset', label: `${g.name} 전적 초기화`, danger: true }, since && { act: 'undo', label: '초기화 취소' }], { cls: 'right' }) : ''}
+    </div>
     ${body}
   </section>`;
   if (tab === 'table') {
     const setReset = async (v) => { await store.setMeta({ statsResetAt: { ...resetMap, [gameId]: v } }); viewStats(); };
-    document.getElementById('reset').onclick = () => { if (confirm(`${g.name} 전적을 0부터 다시 집계할까요?\n(게임 기록은 지워지지 않아요)`)) setReset(Date.now()); };
-    const undo = document.getElementById('undo');
+    $app.querySelector('[data-act="reset"]').onclick = () => { if (confirm(`${g.name} 전적을 0부터 다시 집계할까요?\n(게임 기록은 지워지지 않아요)`)) setReset(Date.now()); };
+    const undo = $app.querySelector('[data-act="undo"]');
     if (undo) undo.onclick = () => setReset(null);
   }
 }
@@ -452,17 +480,14 @@ async function viewPlayers() {
   const [players, sessions] = await Promise.all([store.listPlayers(), store.listSessions()]);
   const count = (id) => sessions.filter((s) => s.playerIds?.includes(id)).length;
   $app.innerHTML = `<section class="card">
-    <h2>참가자</h2>
+    <h2>참가자 ${tipBtn()}</h2>
+    ${tipBody(`<p>이름을 바꾸면 지난 기록과 전적에도 새 이름으로 보여요. 삭제한 참가자는 목록과 전적에서 빠지고, 지난 게임 기록에는 이름이 그대로 남아요.</p>${store.mode === 'firebase' ? '<p>참가자에 Google 계정 이메일을 연결하면, 그 사람이 자기 계정으로 로그인했을 때 함께 한 게임 기록과 전적을 볼 수 있고 점수도 같이 입력할 수 있어요. 이미 끝난 게임에도 바로 적용돼요.</p>' : ''}`)}
     ${players.length ? players.map((p) => `<div class="player-row" data-id="${p.id}">
         <div class="pinfo"><b>${esc(p.name)}</b> <span class="muted">${count(p.id)}판</span>
           <div class="muted email">${p.email ? esc(p.email) : '이메일 미연결'}</div></div>
-        <button class="btn ghost small" data-act="email">${p.email ? '이메일 변경' : '이메일 연결'}</button>
-        <button class="btn ghost small" data-act="rename">이름 변경</button>
-        <button class="btn ghost small danger" data-act="delete">삭제</button>
+        ${menuHtml([{ act: 'rename', label: '이름 변경' }, store.mode === 'firebase' && { act: 'email', label: p.email ? '이메일 변경' : '이메일 연결' }, { act: 'delete', label: '삭제', danger: true }], { cls: 'right' })}
       </div>`).join('') : '<p class="muted">새 게임을 만들 때 참가자를 추가할 수 있어요.</p>'}
     <form class="inline" id="addp"><input name="n" placeholder="새 참가자 이름" maxlength="20" autocomplete="off"><button class="btn">추가</button></form>
-    <p class="muted">이름을 바꾸면 지난 기록과 전적에도 새 이름으로 보여요. 삭제한 참가자는 목록과 전적에서 빠지고, 지난 게임 기록에는 이름이 그대로 남아요.</p>
-    ${store.mode === 'firebase' ? '<p class="muted">참가자에 Google 계정 이메일을 연결하면, 그 사람이 자기 계정으로 로그인했을 때 함께 한 게임 기록과 전적을 볼 수 있고 점수도 같이 입력할 수 있어요. 이미 끝난 게임에도 바로 적용돼요.</p>' : ''}
   </section>`;
   $app.onclick = async (e) => {
     const b = e.target.closest('[data-act]');
@@ -492,6 +517,12 @@ async function viewPlayers() {
     if (players.some((x) => x.name === name)) { toast('이미 있는 이름이에요'); return; }
     await store.addPlayer(name); viewPlayers();
   };
+}
+
+// 오른쪽 위 ? : 게임 화면에서는 그 게임 룰로, 아니면 도움말 처음으로
+function setHelp(gameId) {
+  const q = document.getElementById('helpq');
+  if (q) q.href = gameId ? `#/help/${gameId}` : '#/help';
 }
 
 function viewNotFound() { $app.innerHTML = '<section class="card"><p>찾을 수 없어요.</p><a href="#/">처음으로</a></section>'; }
@@ -530,11 +561,15 @@ async function route() {
   if (store.mode === 'firebase' && !store.user) return viewLogin();
   const [path] = location.hash.replace(/^#/, '').split('?');
   const parts = path.split('/').filter(Boolean);
-  document.querySelectorAll('nav a').forEach((a) => a.classList.toggle('active', a.getAttribute('href').split('?')[0] === '#/' + (parts[0] || '')));
+  const top = ['games', 'new', 'play'].includes(parts[0]) ? '' : parts[0] || '';
+  document.querySelectorAll('nav a').forEach((a) => a.classList.toggle('active', a.getAttribute('href').split('?')[0] === '#/' + top));
+  setHelp(parts[0] === 'help' ? parts[1] : parts[0] === 'new' ? parts[1] : '');
   // 기록을 불러오는 데 오래 걸리면 (느린 네트워크) 눌렀다는 표시를 먼저 보여 줌
   const slow = setTimeout(() => { $app.innerHTML = '<p class="muted center loading">불러오는 중…</p>'; }, 300);
   try {
     if (!parts.length) await viewHome();
+    else if (parts[0] === 'games') await viewGames(parts[1]);
+    else if (parts[0] === 'about') viewAbout();
     else if (parts[0] === 'new') await viewNew(parts[1]);
     else if (parts[0] === 'play') await viewPlay(parts[1]);
     else if (parts[0] === 'history') await viewHistory();
@@ -555,14 +590,19 @@ async function main() {
   try { await store.init(); } catch (err) { $app.innerHTML = `<section class="card"><p>Firebase 초기화 실패: ${esc(err.message)}</p></section>`; return; }
   let wasSignedIn = false;
   store.onAuth(async (u) => {
-    $user.innerHTML = store.guest
-      ? `<span class="muted">게스트 · 이 기기에만 저장</span> <button class="btn ghost small" id="login2">로그인</button> <button class="btn ghost small" id="logout">나가기</button>`
-      : store.mode === 'local'
-        ? '<span class="muted" title="firebase-config.js를 채우면 Firestore에 저장됩니다">이 기기에만 저장</span>'
-        : u ? `<button class="btn ghost small" id="logout">${esc(u.displayName || u.email)} · 로그아웃</button>` : '';
-    const lo = document.getElementById('logout');
+    // 오른쪽 위 계정 메뉴: 참가자 관리 · 앱 정보 · 로그인/로그아웃을 한 곳에
+    const who = store.guest ? '게스트' : store.mode === 'local' ? '메뉴' : u ? (u.displayName || u.email || '계정') : '';
+    const status = store.guest ? '게스트 · 이 기기에만 저장돼요' : store.mode === 'local' ? '이 기기에만 저장돼요' : u?.email ? esc(u.email) : '';
+    $user.innerHTML = who ? menuHtml([
+      status && { text: status },
+      { href: '#/players', label: '참가자 관리' },
+      { href: '#/about', label: '앱 정보 · 업데이트' },
+      store.guest && { act: 'login', label: 'Google로 로그인' },
+      (store.guest || (store.mode === 'firebase' && u)) && { act: 'logout', label: store.guest ? '게스트 나가기' : '로그아웃', danger: true },
+    ], { label: `${esc(who)} ▾`, cls: 'right user-menu' }) : '';
+    const lo = $user.querySelector('[data-act="logout"]');
     if (lo) lo.onclick = () => store.signOut();
-    const li = document.getElementById('login2');
+    const li = $user.querySelector('[data-act="login"]');
     if (li) li.onclick = () => store.signIn().catch((e) => toast(e.message));
     const signedIn = store.mode === 'firebase' && !!u;
     if (signedIn && !wasSignedIn) { try { await offerGuestImport(); } catch (e) { console.error(e); toast('기록 옮기기 실패: ' + e.message); } }
@@ -570,6 +610,7 @@ async function main() {
     route();
   });
   window.addEventListener('hashchange', route);
+  bindUi();
   prefetchGames();
   watchForUpdate();
 }
