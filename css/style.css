@@ -459,3 +459,11 @@ table.h2h td.self{background:var(--chip)}
 @media (min-width:1100px){.card.app-info{max-width:860px;margin:12px auto}}
 .update-bar{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);padding:8px 8px 8px 14px;border-radius:12px;z-index:25;box-shadow:0 6px 20px rgba(0,0,0,.25);white-space:nowrap}
 .update-bar .btn.ghost{color:var(--bg);border-color:transparent}
+/* 서버 동기화 안내 (기록 화면) */
+.sync-card{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 14px;margin:12px 0;font-size:14px;line-height:1.5}
+.sync-card .btn{margin-left:6px;vertical-align:middle}
+.sync-card.warn-card{background:#fdecc8;color:#7a5200;border-color:#f1d697}
+.sync-card.ok-card{color:var(--pos)}
+.sync-note{font-size:12px;margin:-6px 2px 0}
+.badge.pending{background:#c98a12}
+@media (prefers-color-scheme:dark){.sync-card.warn-card{background:#3a2f17;color:#f3d18a;border-color:#5a4720}}

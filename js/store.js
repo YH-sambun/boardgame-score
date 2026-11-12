@@ -1,5 +1,5 @@
 // 저장소: Firebase 설정이 있으면 Firestore, 없으면 localStorage
-import { firebaseConfig } from './firebase-config.js?v=202611121154';
+import { firebaseConfig } from './firebase-config.js?v=202611121212';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -51,7 +51,8 @@ function firestoreStore() {
   const ref = (name, id) => fs.doc(db, 'users', s.user.uid, name, id);
   const sref = (id) => fs.doc(db, 'sessions', id);
   const nref = (id) => fs.doc(db, 'sessions', id, 'notes', s.user.uid);
-  const withFlags = (d) => ({ id: d.id, ...d.data(), shared: d.data().ownerUid !== s.user.uid });
+  // pending: 이 기기에서 바꿨지만 아직 서버에 올라가지 않은 기록 (오프라인 등) → 다른 기기에서는 아직 안 보임
+  const withFlags = (d) => ({ id: d.id, ...d.data(), shared: d.data().ownerUid !== s.user.uid, pending: !!d.metadata?.hasPendingWrites });
   const ownSessions = async () => (await fs.getDocs(fs.query(fs.collection(db, 'sessions'), fs.where('ownerUid', '==', s.user.uid)))).docs;
 
   // 실시간 동기화: 로그인 후 내 기록·공유받은 기록·참가자를 한 번 받아 두고, 바뀐 것만 계속 받아 옴.
@@ -64,7 +65,8 @@ function firestoreStore() {
     const email = normEmail(s.user.email);
     const L = { uid: uidNow, own: null, shared: email ? null : new Map(), players: null, meta: null, unsubs: [], failed: false };
     const watch = (q, apply) => new Promise((res) => {
-      L.unsubs.push(fs.onSnapshot(q, (snap) => { apply(snap); res(); }, (e) => { console.error('live', e); L.failed = true; res(); }));
+      // includeMetadataChanges: 서버에 올라가는 순간(pending 해제)도 알림 받음
+      L.unsubs.push(fs.onSnapshot(q, { includeMetadataChanges: true }, (snap) => { apply(snap); res(); notifySync(); }, (e) => { console.error('live', e); L.failed = true; res(); }));
     });
     const sessCol = fs.collection(db, 'sessions');
     L.ready = Promise.all([
@@ -74,6 +76,16 @@ function firestoreStore() {
     ]);
     live = L;
   }
+  // 서버 동기화 상태: 아직 서버에 올라가지 않은 내 기록 수
+  const syncCbs = new Set();
+  function syncState() {
+    if (!live || !live.own) return { pending: 0, ready: false };
+    let pending = 0;
+    for (const m of [live.own, live.shared]) if (m) for (const d of m.values()) if (d.metadata.hasPendingWrites) pending++;
+    return { pending, ready: true };
+  }
+  function notifySync() { const st = syncState(); syncCbs.forEach((cb) => { try { cb(st); } catch {} }); }
+
   // 실시간 데이터가 준비됐으면 그걸 쓰고, 아니면 null (예전 방식으로 서버에서 받음)
   async function liveData() {
     if (!s.user) return null;
@@ -183,6 +195,11 @@ function firestoreStore() {
       return fs.onSnapshot(sref(id), (d) => { if (d.exists()) cb(withFlags(d)); }, (e) => console.error('watch', e));
     },
     async setNote(sid, note) { await fs.setDoc(nref(sid), note); },
+    syncState,
+    // 동기화 상태가 바뀔 때마다 cb 호출. 끊는 함수를 돌려줌
+    onSync(cb) { syncCbs.add(cb); cb(syncState()); return () => syncCbs.delete(cb); },
+    // 이 기기에서 바꾼 내용이 모두 서버에 올라갈 때까지 기다림
+    async flush() { await fs.waitForPendingWrites(db); },
     async listSessions() {
       const L = await liveData();
       if (L) {
@@ -252,16 +269,24 @@ function hybridStore() {
         const created = await fb.createSession({ ...rest, players, playerIds: players.map((p) => p.id) });
         const note = await lc.getNote(id); // 클루 개인 노트도 함께 옮김
         if (note) await fb.setNote(created.id, note);
+        // 하나 옮길 때마다 바로 지움 → 중간에 끊겨도 다음에 이어서 옮기고, 같은 기록이 두 번 올라가지 않음
+        await lc.deleteSession(id);
       }
-      for (const s of lSessions) await lc.deleteSession(s.id);
       for (const p of lPlayers) await lc.deletePlayer(p.id);
+      lc.setMeta({ guestImportDeclinedAt: 0 });
       return lSessions.length;
     },
+    // 로그인 직후 "옮길까요?"에 아니오를 눌렀는지 (이 기기 기준). 기록 화면에서 다시 옮길 수 있음
+    async guestImportDeclined() { return !!(await lc.getMeta()).guestImportDeclinedAt; },
+    async declineGuestImport() { await lc.setMeta({ guestImportDeclinedAt: Date.now() }); },
   };
   for (const k of ['listPlayers', 'addPlayer', 'deletePlayer', 'renamePlayer', 'setPlayerEmail', 'getMeta', 'setMeta',
     'createSession', 'getSession', 'updateSession', 'deleteSession', 'listSessions', 'getNote', 'setNote', 'watchSession']) {
     h[k] = (...a) => active()[k](...a);
   }
+  h.syncState = () => (guest ? { pending: 0, ready: false } : fb.syncState());
+  h.onSync = (cb) => (guest ? () => {} : fb.onSync(cb));
+  h.flush = () => (guest ? Promise.resolve() : fb.flush());
   return h;
 }
 
