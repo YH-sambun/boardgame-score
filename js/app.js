@@ -1,10 +1,10 @@
-import { store } from './store.js?v=202611121446';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121446';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121446';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121446';
-import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121446';
-import { viewTools } from './tools.js?v=202611121446';
-import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611121446';
+import { store } from './store.js?v=202611121512';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121512';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121512';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121512';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121512';
+import { viewTools } from './tools.js?v=202611121512';
+import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611121512';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -324,6 +324,7 @@ async function viewPlay(id) {
         s.status = 'finished'; s.finishedAt = Date.now();
         await store.updateSession(s.id, { data: s.data, totals: s.totals, status: s.status, finishedAt: s.finishedAt, updatedAt: Date.now() });
         toast('전적에 기록했어요');
+        if (s.data?.daily) publishDaily([s], s.data.daily);
         await viewPlay(s.id);
         if (before) showBadges(newlyEarned(before.all, s));
       },
@@ -399,13 +400,26 @@ async function viewHistory() {
 }
 
 // 전적: 순위표 · 상대 전적 · 레이팅 · 업적
-const STAT_TABS = [['table', '순위표'], ['h2h', '상대 전적'], ['elo', '레이팅'], ['badges', '업적']];
+const STAT_TABS = [['table', '순위표'], ['h2h', '상대 전적'], ['elo', '레이팅'], ['badges', '업적'], ['daily', '오늘의 문제']];
+const statTabs = () => STAT_TABS.filter(([k]) => k !== 'daily' || store.canFriends?.());
+const canFriends = () => !!store.canFriends?.();
+
+// '친구만' 보기에 넣을 사람: 나 + 친구 (참가자에 연결된 이메일로 알아봄)
+async function friendScope(players) {
+  const friends = await store.listFriends().catch((e) => { console.error(e); return null; });
+  if (!friends) return null;
+  const myEmail = (store.user?.email || '').toLowerCase();
+  const keys = new Set([myEmail, ...friends.map((f) => f.email)].filter(Boolean).map((e) => 'e:' + e.toLowerCase()));
+  const linked = new Set(players.map((p) => (p.email || '').toLowerCase()).filter(Boolean));
+  return { keys, friends, meLinked: linked.has(myEmail), unlinked: friends.filter((f) => !f.email || !linked.has(f.email.toLowerCase())) };
+}
 
 async function viewStats() {
   const [sessions, players, meta] = await Promise.all([store.listSessions(), store.listPlayers(), store.getMeta()]);
   await loadGames(sessions.map((s) => s.gameId));
   const q = query();
-  const tab = STAT_TABS.some(([k]) => k === q.get('tab')) ? q.get('tab') : 'table';
+  const tab = statTabs().some(([k]) => k === q.get('tab')) ? q.get('tab') : 'table';
+  if (tab === 'daily') return viewDailyBoard(sessions);
   const allowAll = tab === 'h2h' || tab === 'badges';
   let gameId = q.get('game') || (allowAll ? '' : GAMES[0].id);
   if (!allowAll && !gameId) gameId = GAMES[0].id;
@@ -413,12 +427,17 @@ async function viewStats() {
   const resetMap = meta.statsResetAt || {};
   const since = gameId ? resetMap[gameId] || 0 : 0;
   const activeIds = new Set(players.map((p) => p.id));
-  const link = (o) => { const p = new URLSearchParams({ tab, ...(gameId ? { game: gameId } : {}), ...o }); [...p.entries()].forEach(([k, v]) => { if (!v) p.delete(k); }); return '#/stats?' + p; };
+  // 친구만: 나와 친구로 맺은 사람끼리만 순위·상대 전적·레이팅을 계산
+  const scoped = canFriends() && tab !== 'badges' && q.get('scope') === 'friends';
+  const fsc = scoped ? await friendScope(players) : null;
+  const only = fsc ? fsc.keys : null;
+  const scopeQ = scoped ? '&scope=friends' : '';
+  const link = (o) => { const p = new URLSearchParams({ tab, ...(gameId ? { game: gameId } : {}), ...(scoped ? { scope: 'friends' } : {}), ...o }); [...p.entries()].forEach(([k, v]) => { if (!v) p.delete(k); }); return '#/stats?' + p; };
 
   let body = '';
   let tip = '';
   if (tab === 'table') {
-    const stats = computeStats(sessions, gameId, { since, activeIds });
+    const stats = computeStats(sessions, gameId, { since, activeIds, only });
     const games = rankedSessions(sessions, { gameId, sinceMap: resetMap }).length;
     body = `<p class="muted">${g.name} 완료 게임 ${games}판${since ? ` · ${fmtDate(since)} 초기화 이후` : ''}</p>
     ${stats.length ? (g.tieIsNoWin ? `<div class="table-wrap"><table class="stats">
@@ -431,7 +450,7 @@ async function viewStats() {
 `;
     tip = '<p>게임별로 끝난 판을 모아 순위를 매겨요. ⋯ 메뉴에서 전적을 초기화할 수 있어요.</p><p>초기화해도 게임 기록은 \'기록\' 탭에 남아 있고, 초기화 이후 게임부터 다시 집계해요. 기록 탭에서 게임을 삭제하면 전적에서도 빠져요.</p>';
   } else if (tab === 'h2h') {
-    const { people, cell } = headToHead(sessions, { gameId: gameId || null, sinceMap: resetMap, activeIds });
+    const { people, cell } = headToHead(sessions, { gameId: gameId || null, sinceMap: resetMap, activeIds, only });
     const a = q.get('a'); const b = q.get('b');
     const pair = a && b ? cell(a, b) : null;
     tip = '<p>같이 한 게임에서 누가 더 높은 순위로 끝났는지 셉니다. 칸은 <b>왼쪽 사람 기준</b> 승-패(무). 칸을 누르면 게임별로 나눠 봐요.</p>';
@@ -449,7 +468,7 @@ async function viewStats() {
       <div class="table-wrap"><table class="stats"><thead><tr><th>게임</th><th>판수</th><th>승</th><th>패</th><th>무</th></tr></thead>
       <tbody>${Object.entries(pair.byGame).map(([gid, x]) => `<tr><td>${esc(getGame(gid)?.name || gid)}</td><td>${x.n}</td><td>${x.w}</td><td>${x.l}</td><td>${x.d}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
   } else if (tab === 'elo') {
-    const list = eloRatings(sessions, gameId, { since, activeIds });
+    const list = eloRatings(sessions, gameId, { since, activeIds, only });
     tip = '<p>모두 1000점에서 시작해요. 이기면 오르고 지면 내리는데, 나보다 레이팅이 높은 사람을 이기면 더 많이 올라요. 여럿이 한 게임은 순위끼리 1:1로 겨룬 것으로 계산해요.</p>';
     body = `${list.length ? `<div class="table-wrap"><table class="stats elo">
       <thead><tr><th>#</th><th>이름</th><th>레이팅</th><th>최근</th><th>판수</th><th>추이</th></tr></thead>
@@ -472,11 +491,13 @@ async function viewStats() {
   $app.innerHTML = `<section class="card">
     <h2>전적 ${tipBtn()}</h2>
     ${tipBody(tip)}
-    <div class="seg">${STAT_TABS.map(([k, l]) => `<a class="${k === tab ? 'on' : ''}" href="#/stats?tab=${k}${gameId ? `&game=${gameId}` : ''}">${l}</a>`).join('')}</div>
+    <div class="seg">${statTabs().map(([k, l]) => `<a class="${k === tab ? 'on' : ''}" href="#/stats?tab=${k}${gameId && k !== 'daily' ? `&game=${gameId}` : ''}${k !== 'badges' && k !== 'daily' ? scopeQ : ''}">${l}</a>`).join('')}</div>
     <div class="toolbar">
-      ${navSelect([...(allowAll ? [[`#/stats?tab=${tab}`, '모든 게임']] : []), ...GAMES.map((x) => [`#/stats?tab=${tab}&game=${x.id}`, x.name])], gameId ? `#/stats?tab=${tab}&game=${gameId}` : `#/stats?tab=${tab}`)}
+      ${navSelect([...(allowAll ? [[`#/stats?tab=${tab}${scopeQ}`, '모든 게임']] : []), ...GAMES.map((x) => [`#/stats?tab=${tab}&game=${x.id}${scopeQ}`, x.name])], gameId ? `#/stats?tab=${tab}&game=${gameId}${scopeQ}` : `#/stats?tab=${tab}${scopeQ}`)}
+      ${canFriends() && tab !== 'badges' ? `<div class="seg mini">${[['', '전체'], ['friends', '친구만']].map(([v, l]) => { const p = new URLSearchParams({ tab, ...(gameId ? { game: gameId } : {}), ...(v ? { scope: v } : {}) }); return `<a class="${(v === 'friends') === scoped ? 'on' : ''}" href="#/stats?${p}">${l}</a>`; }).join('')}</div>` : ''}
       ${tab === 'table' ? menuHtml([{ act: 'reset', label: `${g.name} 전적 초기화`, danger: true }, since && { act: 'undo', label: '초기화 취소' }], { cls: 'right' }) : ''}
     </div>
+    ${fsc ? scopeNote(fsc) : ''}
     ${body}
   </section>`;
   if (tab === 'table') {
@@ -485,6 +506,168 @@ async function viewStats() {
     const undo = $app.querySelector('[data-act="undo"]');
     if (undo) undo.onclick = () => setReset(null);
   }
+}
+
+// '친구만'일 때 위에 붙는 안내: 친구가 없거나, 이메일이 연결 안 돼 순위에 안 나오는 사람
+function scopeNote(fs) {
+  if (!fs.friends.length) return '<p class="note">아직 친구가 없어요. <a href="#/friends">친구 추가</a>에서 친구 코드나 링크로 친구를 맺으면, 나와 친구끼리만 순위를 계산해요.</p>';
+  const miss = [];
+  if (!fs.meLinked) miss.push('나');
+  fs.unlinked.forEach((f) => miss.push(f.name || f.email || '친구'));
+  return `<p class="muted small-note">나와 친구 ${fs.friends.length}명끼리만 계산해요.${miss.length ? ` <b>${esc(miss.join(', '))}</b>은(는) 참가자에 계정 이메일이 연결돼 있지 않아 빠져 있어요. <a href="#/friends">친구 화면</a>에서 연결할 수 있어요.` : ''}</p>`;
+}
+
+// ───────── 오늘의 문제: 나와 친구 결과 비교 ─────────
+const DAILY_GAMES = ['sudoku', 'carpark'];
+const dayStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const fmtClock = (ms) => { const t = Math.floor((ms || 0) / 1000); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+
+// 내가 만든 오늘의 문제 기록 → 친구에게 보일 결과 (같은 사람·문제는 가장 좋은 것)
+function dailyItems(sessions, date = null) {
+  const out = new Map();
+  for (const s of sessions) {
+    if (s.shared || !DAILY_GAMES.includes(s.gameId) || s.status !== 'finished' || !s.data?.daily || (date && s.data.daily !== date)) continue;
+    const p = s.players?.[0] || {};
+    const d = s.data;
+    const x = { key: `${s.gameId}_${d.daily}_${d.level}_${p.id || 'p'}`, gameId: s.gameId, daily: d.daily, level: d.level, name: p.name || '', score: s.totals?.[0] ?? 0,
+      elapsed: d.elapsed || 0, solved: !!d.solved, moves: d.moves ?? null, mistakes: d.mistakes ?? null, hints: d.hints || 0, sessionId: s.id, finishedAt: s.finishedAt || s.createdAt };
+    const o = out.get(x.key);
+    if (!o || x.score > o.score || (x.score === o.score && x.elapsed < o.elapsed)) out.set(x.key, x);
+  }
+  return [...out.values()];
+}
+async function publishDaily(sessions, date) {
+  if (!canFriends()) return;
+  const items = dailyItems(sessions, date);
+  if (items.length) await store.publishDaily(items).catch((e) => console.error('publishDaily', e));
+}
+
+async function viewDailyBoard(sessions) {
+  const q = query();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(q.get('date') || '') ? q.get('date') : dayStr(new Date());
+  const shift = (n) => { const d = new Date(date + 'T12:00:00'); d.setDate(d.getDate() + n); return dayStr(d); };
+  const isToday = date === dayStr(new Date());
+  await publishDaily(sessions, date); // 예전에 푼 것도 친구에게 보이도록
+  const friends = await store.listFriends().catch(() => []);
+  const rows = await store.dailyBoard(date, friends);
+  await loadGames(DAILY_GAMES);
+  const friendName = new Map(friends.map((f) => [f.uid, f.name || f.email || '친구']));
+  const sections = DAILY_GAMES.flatMap((gid) => {
+    const g = getGame(gid);
+    const levels = [...new Set(rows.filter((r) => r.gameId === gid).map((r) => r.level))].sort((a, b) => a - b);
+    return levels.map((lv) => {
+      const list = rows.filter((r) => r.gameId === gid && r.level === lv)
+        .sort((a, b) => (b.solved - a.solved) || b.score - a.score || a.elapsed - b.elapsed);
+      let rank = 0; let prev = null;
+      return `<h3 class="sub-h">${gameIcon(g, 'sm')} ${esc(g.name)} · ${esc(g.settingsFields?.find((f) => f.key === 'level')?.options?.find((o) => o.value === lv)?.label || `${lv + 1}단계`)}</h3>
+        <div class="table-wrap"><table class="stats daily"><thead><tr><th>#</th><th>이름</th><th>점수</th><th>시간</th><th>${gid === 'carpark' ? '이동' : '실수'}</th></tr></thead>
+        <tbody>${list.map((r, i) => {
+          const k = `${r.solved}|${r.score}|${r.elapsed}`;
+          if (k !== prev) rank = i + 1; prev = k;
+          const acct = r.who === 'me' ? '' : friendName.get(r.uid) || r.owner || '';
+          return `<tr class="${r.who === 'me' ? 'me' : ''}"><td>${r.solved ? rank : '-'}</td><td><b>${esc(r.name)}</b>${acct && acct !== r.name ? ` <small class="muted">${esc(acct)}</small>` : ''}</td>
+            <td>${r.solved ? r.score : '<span class="muted">포기</span>'}</td><td>${fmtClock(r.elapsed)}</td><td>${(gid === 'carpark' ? r.moves : r.mistakes) ?? '-'}</td></tr>`;
+        }).join('')}</tbody></table></div>`;
+    });
+  });
+  $app.innerHTML = `<section class="card">
+    <h2>전적 ${tipBtn()}</h2>
+    ${tipBody('<p>스도쿠·차빼!에서 <b>오늘의 문제</b>로 푼 결과를 나와 친구끼리 비교해요. 같은 날 같은 단계를 고르면 모두 같은 문제가 나와요.</p><p>점수가 높은 순, 같으면 빨리 푼 순이에요. 같은 문제를 여러 번 풀면 가장 좋은 결과만 올라가요. 친구는 계정 메뉴 → 친구에서 맺을 수 있어요.</p>')}
+    <div class="seg">${statTabs().map(([k, l]) => `<a class="${k === 'daily' ? 'on' : ''}" href="#/stats?tab=${k}">${l}</a>`).join('')}</div>
+    <div class="toolbar daynav">
+      <a class="btn small ghost" href="#/stats?tab=daily&date=${shift(-1)}" aria-label="전날">‹</a>
+      <b>${esc(date.slice(5).replace('-', '/'))}${isToday ? ' 오늘' : ''}</b>
+      ${isToday ? '<span class="btn small ghost" aria-hidden="true" style="visibility:hidden">›</span>' : `<a class="btn small ghost" href="#/stats?tab=daily&date=${shift(1)}" aria-label="다음 날">›</a>`}
+      <a class="btn small right-btn" href="#/friends">친구 ${friends.length}명</a>
+    </div>
+    ${sections.length ? sections.join('') : `<p class="muted">${isToday ? '오늘' : '이 날'}은 아직 나와 친구 중 오늘의 문제를 푼 사람이 없어요.</p>`}
+    ${friends.length ? '' : '<p class="note">친구를 맺으면 친구 결과도 여기 같이 나와요. <a href="#/friends">친구 추가하기</a></p>'}
+    ${isToday ? `<p class="muted small-note">${DAILY_GAMES.map((gid) => `<a href="#/new/${gid}">${esc(getGame(gid).name)}</a>`).join(' · ')}에서 문제를 '오늘의 문제'로 고르고 풀어 보세요.</p>` : ''}
+  </section>`;
+}
+
+// ───────── 친구 ─────────
+async function viewFriends() {
+  if (!canFriends()) {
+    $app.innerHTML = `<section class="card"><h2>친구</h2><p>친구 기능은 Google로 로그인해야 쓸 수 있어요.</p>${store.guest ? '<button class="btn primary" id="flogin">Google로 로그인</button>' : ''}</section>`;
+    const b = document.getElementById('flogin');
+    if (b) b.onclick = () => store.signIn().catch((e) => toast(e.message));
+    return;
+  }
+  const q = query();
+  // 초대 링크(#/friends?add=코드)로 들어온 경우: 확인 후 친구 맺기
+  const invite = (q.get('add') || '').trim().toUpperCase();
+  if (invite) {
+    history.replaceState(null, '', '#/friends');
+    if (confirm(`친구 코드 ${invite} 로 친구를 맺을까요?\n서로의 오늘의 문제 결과를 볼 수 있고, 전적에서 '친구만' 순위에 함께 나와요.`)) {
+      const r = await store.addFriend(invite).catch((e) => ({ error: e.message }));
+      toast(r.ok ? `${r.friend.name || '친구'}님과 친구가 됐어요` : r.error);
+    }
+  }
+  const [code, friends, players] = await Promise.all([store.myFriendCode(), store.listFriends(), store.listPlayers()]);
+  const myEmail = (store.user.email || '').toLowerCase();
+  const playerOf = (email) => players.find((p) => (p.email || '').toLowerCase() === (email || '').toLowerCase());
+  const linkUrl = `${location.origin}${location.pathname}#/friends?add=${code}`;
+  const linkSel = (email, who) => {
+    const cur = playerOf(email);
+    return `<label class="pick small">${selectHtml(`data-link="${esc(email)}" aria-label="${esc(who)} 참가자 연결"`, [['', cur ? '연결 해제' : '참가자 고르기'], ...players.filter((p) => !p.email || p === cur).map((p) => [p.id, p.name])], cur?.id || '')}</label>`;
+  };
+  $app.innerHTML = `<section class="card">
+    <h2>친구 ${tipBtn()}</h2>
+    ${tipBody('<p>친구를 맺으면 서로의 <b>오늘의 문제</b>(스도쿠·차빼!) 결과를 볼 수 있고, 전적에서 <b>친구만</b>을 고르면 나와 친구끼리만 순위·상대 전적·레이팅을 계산해요.</p><p>친구가 볼 수 있는 건 오늘의 문제 결과(이름·점수·시간)뿐이에요. 다른 게임 기록은 지금처럼 참가자에 이메일을 연결해 공유한 것만 보여요.</p><p>순위표에서 친구를 알아보려면 그 사람의 참가자에 계정 이메일이 연결돼 있어야 해요. 아래에서 바로 연결할 수 있어요.</p>')}
+    <div class="friend-code"><span class="muted">내 친구 코드</span><b>${esc(code)}</b></div>
+    <div class="btn-row">
+      <button class="btn primary" data-act="share">초대 링크 보내기</button>
+      <button class="btn" data-act="copy">코드 복사</button>
+      ${menuHtml([{ act: 'renew', label: '새 코드 받기' }], { cls: 'right' })}
+    </div>
+    <form class="inline" id="addf"><input name="c" placeholder="친구 코드 6자리" maxlength="6" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase"><button class="btn">친구 추가</button></form>
+  </section>
+  <section class="card">
+    <h2>내 친구 <small class="muted">${friends.length}명</small></h2>
+    ${friends.length ? friends.map((f) => `<div class="player-row" data-uid="${esc(f.uid)}">
+        <div class="pinfo"><b>${esc(f.name || '이름 없음')}</b><div class="muted email">${esc(f.email || '')}</div></div>
+        ${f.email ? linkSel(f.email, f.name) : ''}
+        ${menuHtml([{ act: 'unfriend', label: '친구 끊기', danger: true }], { cls: 'right' })}
+      </div>`).join('') : '<p class="muted">아직 친구가 없어요. 초대 링크를 보내거나 친구 코드를 입력해 보세요.</p>'}
+    ${myEmail ? `<div class="player-row me-row"><div class="pinfo"><b>나</b> <span class="muted">(${esc(store.user.displayName || '')})</span><div class="muted email">${esc(myEmail)}</div></div>${linkSel(myEmail, '나')}</div>` : ''}
+  </section>`;
+  $app.onsubmit = async (e) => {
+    e.preventDefault();
+    const c = e.target.c.value.trim().toUpperCase();
+    if (c.length !== 6) { toast('친구 코드는 6자리예요'); return; }
+    const r = await store.addFriend(c).catch((err) => ({ error: err.message }));
+    toast(r.ok ? `${r.friend.name || '친구'}님과 친구가 됐어요` : r.error);
+    if (r.ok) viewFriends();
+  };
+  $app.onchange = async (e) => {
+    const sel = e.target.closest('select[data-link]');
+    if (!sel) return;
+    const email = sel.dataset.link;
+    const cur = playerOf(email);
+    if (cur && cur.id !== sel.value) await store.setPlayerEmail(cur.id, '');
+    if (sel.value) await store.setPlayerEmail(sel.value, email);
+    toast(sel.value ? '참가자에 연결했어요' : '연결을 해제했어요');
+    viewFriends();
+  };
+  $app.onclick = async (e) => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    const act = b.dataset.act;
+    if (act === 'copy') { await navigator.clipboard?.writeText(code).catch(() => {}); toast('코드를 복사했어요'); }
+    else if (act === 'share') {
+      const text = `보드게임 앱에서 친구 해요! 링크를 누르거나 친구 코드 ${code} 를 입력해 주세요.`;
+      if (navigator.share) { navigator.share({ title: '보드게임 친구 초대', text, url: linkUrl }).catch(() => {}); }
+      else { await navigator.clipboard?.writeText(`${text}\n${linkUrl}`).catch(() => {}); toast('초대 링크를 복사했어요'); }
+    } else if (act === 'renew') {
+      if (!confirm('새 친구 코드를 받을까요?\n예전 코드와 초대 링크는 더 이상 쓸 수 없어요. 이미 맺은 친구는 그대로예요.')) return;
+      await store.myFriendCode({ renew: true }); toast('새 코드를 받았어요'); viewFriends();
+    } else if (act === 'unfriend') {
+      const f = friends.find((x) => x.uid === b.closest('[data-uid]').dataset.uid);
+      if (!confirm(`${f.name || '이 친구'}님과 친구를 끊을까요?\n서로 오늘의 문제 결과를 볼 수 없게 돼요.`)) return;
+      await store.removeFriend(f.uid); toast('친구를 끊었어요'); viewFriends();
+    }
+  };
 }
 
 // 레이팅 추이 미니 그래프
@@ -595,6 +778,7 @@ async function route() {
     else if (parts[0] === 'history') await viewHistory();
     else if (parts[0] === 'stats') await viewStats();
     else if (parts[0] === 'players') await viewPlayers();
+    else if (parts[0] === 'friends') await viewFriends();
     else if (parts[0] === 'help') await viewHelp(parts[1]);
     else if (parts[0] === 'tools') viewTools($app, { store, toast, tab: parts[1] });
     else viewNotFound();
@@ -616,6 +800,7 @@ async function main() {
     $user.innerHTML = who ? menuHtml([
       status && { text: status },
       { href: '#/players', label: '참가자 관리' },
+      store.canFriends?.() && { href: '#/friends', label: '친구' },
       { href: '#/about', label: '앱 정보 · 업데이트' },
       store.guest && { act: 'login', label: 'Google로 로그인' },
       (store.guest || (store.mode === 'firebase' && u)) && { act: 'logout', label: store.guest ? '게스트 나가기' : '로그아웃', danger: true },

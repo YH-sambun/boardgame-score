@@ -2,7 +2,7 @@
 //  쉬움: 가장 많이 나온 눈만 남기고, 지금 점수가 제일 큰 칸에 기록
 //  보통: 남길 주사위 조합마다 다시 굴렸을 때의 기대 점수를 계산 (칸의 가치는 단순 비교)
 //  어려움: 같은 계산 + 칸마다 평소 기대 점수(기준값)와 상단 보너스 63점 진행 상황까지 따짐
-import { CATEGORIES, scoreFor, BONUS_LINE } from './yacht.js?v=202611121446';
+import { CATEGORIES, scoreFor, BONUS_LINE } from './yacht.js?v=202611121512';
 
 // 칸을 쓸 때 평소에 기대하는 점수 (이보다 낮으면 아까운 칸)
 const PAR = { choice: 22, fourKind: 9, fullHouse: 11, smallStraight: 10, largeStraight: 14, yacht: 9 };

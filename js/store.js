@@ -1,5 +1,5 @@
 // 저장소: Firebase 설정이 있으면 Firestore, 없으면 localStorage
-import { firebaseConfig } from './firebase-config.js?v=202611121446';
+import { firebaseConfig } from './firebase-config.js?v=202611121512';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -42,6 +42,7 @@ function localStore() {
 //  sessions/{id} : 게임 기록. ownerUid(만든 사람) + viewerEmails(참가자에 연결된 이메일)
 //  users/{uid}/notes/{sessionId} : 그 게임에서 쓰는 내 개인 노트(클루 추리 노트). 본인만 읽기/쓰기
 //    → 참가자에 이메일을 연결하면 그 계정에서도 해당 게임을 보고 점수를 입력할 수 있음 (삭제는 만든 사람만)
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 헷갈리는 0·O·1·I 뺌
 const normEmail = (e) => String(e || '').trim().toLowerCase();
 const viewerEmailsOf = (players) => [...new Set(players.map((p) => normEmail(p.email)).filter(Boolean))];
 
@@ -208,6 +209,70 @@ function firestoreStore() {
     onSync(cb) { syncCbs.add(cb); cb(syncState()); return () => syncCbs.delete(cb); },
     // 이 기기에서 바꾼 내용이 모두 서버에 올라갈 때까지 기다림
     async flush() { await fs.waitForPendingWrites(db); },
+    // ── 친구 ──
+    //  friendCodes/{코드}: { uid, name, email } — 로그인한 누구나 코드 하나는 읽을 수 있음(목록은 못 봄)
+    //  friendships/{작은uid_큰uid}: { members:[a,b], people:{ uid:{ name, email } } } — 두 사람만 읽기·삭제
+    //  dailyScores/{uid}/items/{게임_날짜_단계_참가자}: 오늘의 문제 결과 — 본인과 친구만 읽기
+    async myFriendCode({ renew = false } = {}) {
+      const meta = await s.getMeta();
+      if (meta.friendCode && !renew) return meta.friendCode;
+      if (meta.friendCode) await fs.deleteDoc(fs.doc(db, 'friendCodes', meta.friendCode)).catch(() => {});
+      for (let i = 0; i < 5; i++) {
+        const code = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => CODE_CHARS[b % CODE_CHARS.length]).join('');
+        try {
+          // 이미 있는 코드면 규칙상 덮어쓰기가 안 돼 실패 → 다른 코드로 다시
+          await fs.setDoc(fs.doc(db, 'friendCodes', code), { uid: s.user.uid, name: s.user.displayName || '', email: normEmail(s.user.email), createdAt: Date.now() });
+          await s.setMeta({ friendCode: code });
+          return code;
+        } catch (e) { if (e.code !== 'permission-denied') throw e; }
+      }
+      throw new Error('친구 코드를 만들지 못했어요. 잠시 후 다시 해 주세요.');
+    },
+    async listFriends() {
+      const snap = await fs.getDocs(fs.query(fs.collection(db, 'friendships'), fs.where('members', 'array-contains', s.user.uid)));
+      return snap.docs.map((d) => {
+        const x = d.data();
+        const uid = x.members.find((m) => m !== s.user.uid);
+        return { uid, ...(x.people?.[uid] || {}), since: x.createdAt };
+      }).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+    },
+    // 친구 코드로 친구 맺기. 결과: { ok, friend } 또는 { error }
+    async addFriend(code) {
+      code = String(code || '').trim().toUpperCase();
+      const c = await fs.getDoc(fs.doc(db, 'friendCodes', code)).catch(() => null);
+      if (!c?.exists()) return { error: '없는 친구 코드예요' };
+      const f = c.data();
+      if (f.uid === s.user.uid) return { error: '내 코드예요' };
+      const members = [s.user.uid, f.uid].sort();
+      const id = members.join('_');
+      if ((await fs.getDoc(fs.doc(db, 'friendships', id)).catch(() => null))?.exists()) return { error: '이미 친구예요', friend: f };
+      await fs.setDoc(fs.doc(db, 'friendships', id), {
+        members, code, createdAt: Date.now(),
+        people: { [s.user.uid]: { name: s.user.displayName || '', email: normEmail(s.user.email) }, [f.uid]: { name: f.name || '', email: f.email || '' } },
+      });
+      return { ok: true, friend: f };
+    },
+    async removeFriend(uid) { await fs.deleteDoc(fs.doc(db, 'friendships', [s.user.uid, uid].sort().join('_'))); },
+    // 내 오늘의 문제 결과 올리기 (같은 칸은 점수가 더 좋을 때만 덮어씀)
+    async publishDaily(items) {
+      const ic = fs.collection(db, 'dailyScores', s.user.uid, 'items');
+      const dates = [...new Set(items.map((x) => x.daily))];
+      const have = new Map();
+      for (const d of dates) (await fs.getDocs(fs.query(ic, fs.where('daily', '==', d)))).docs.forEach((x) => have.set(x.id, x.data()));
+      const better = (a, b) => !b || a.score > b.score || (a.score === b.score && a.elapsed < b.elapsed);
+      await Promise.all(items.filter((x) => better(x, have.get(x.key)))
+        .map(({ key, ...x }) => fs.setDoc(fs.doc(ic, key), { ...x, owner: s.user.displayName || '' })));
+    },
+    // 그 날짜의 나와 친구 결과. 친구 결과를 못 읽으면(규칙 미게시 등) 건너뜀
+    async dailyBoard(date, friends) {
+      const one = async (uid, who) => {
+        try {
+          const snap = await fs.getDocs(fs.query(fs.collection(db, 'dailyScores', uid, 'items'), fs.where('daily', '==', date)));
+          return snap.docs.map((d) => ({ ...d.data(), uid, who }));
+        } catch (e) { console.error('dailyBoard', uid, e); return []; }
+      };
+      return (await Promise.all([one(s.user.uid, 'me'), ...friends.map((f) => one(f.uid, 'friend'))])).flat();
+    },
     async listSessions() {
       const L = await liveData();
       if (L) {
@@ -292,6 +357,11 @@ function hybridStore() {
     'createSession', 'getSession', 'updateSession', 'deleteSession', 'listSessions', 'getNote', 'setNote', 'watchSession']) {
     h[k] = (...a) => active()[k](...a);
   }
+  // 친구 기능은 로그인했을 때만 (게스트·이 기기 모드에는 없음)
+  for (const k of ['myFriendCode', 'listFriends', 'addFriend', 'removeFriend', 'publishDaily', 'dailyBoard']) {
+    h[k] = (...a) => { if (guest) throw new Error('친구 기능은 로그인해야 쓸 수 있어요'); return fb[k](...a); };
+  }
+  h.canFriends = () => !guest && !!fb.user;
   h.syncState = () => (guest ? { pending: 0, ready: false } : fb.syncState());
   h.onSync = (cb) => (guest ? () => {} : fb.onSync(cb));
   h.flush = () => (guest ? Promise.resolve() : fb.flush());

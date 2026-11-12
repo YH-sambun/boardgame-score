@@ -595,3 +595,20 @@ header details.dd[open] > summary{background:#2b3a4e}
 .play-top .back{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin-right:4px;border-radius:8px;text-decoration:none;color:var(--ink);font-size:26px;line-height:1;background:var(--chip)}
 .result-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .result-actions .btn{text-decoration:none;flex:1;text-align:center;min-width:90px}
+/* 친구 · 오늘의 문제 친구 순위 */
+.toolbar .seg.mini{margin:0 0 0 auto;flex:none;width:max-content;min-width:max-content}
+.seg.mini a{flex:none;white-space:nowrap;padding:5px 12px;font-size:13px}
+.small-note{font-size:13px;margin:6px 0}
+p.note{background:var(--chip);border-radius:10px;padding:10px 12px;font-size:14px;margin:10px 0}
+.friend-code{display:flex;align-items:baseline;gap:12px;margin:8px 0 12px}
+.friend-code b{font-size:30px;letter-spacing:4px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.btn-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px}
+.btn-row .dd{margin-left:auto}
+.pick.small select{font-size:13px;padding:5px 6px;max-width:150px}
+.me-row{border-top:1px dashed var(--line) !important;margin-top:6px}
+.daynav{gap:6px}
+.daynav b{min-width:84px;text-align:center}
+.daynav .right-btn{margin-left:auto}
+table.daily tr.me td{background:var(--chip)}
+table.daily td small{font-weight:400}
+.sub-h .gmark.sm{vertical-align:-6px;margin-right:2px}
