@@ -1,6 +1,6 @@
 // 장기 컴퓨터 상대: 기물 점수 + 약간의 위치 점수로 몇 수 앞을 내다보는 탐색 (알파-베타)
 //  실력 0 쉬움(1수 + 흔들기) / 1 보통(2수) / 2 어려움(3수, 잡는 수 연장)
-import { pseudoMoves, applyMove, legalMovesFrom, other, VALUE, xy } from './janggi-rules.js?v=202611121512';
+import { pseudoMoves, applyMove, legalMovesFrom, other, VALUE, xy } from './janggi-rules.js?v=202611121529';
 
 const KING = 1000;
 function evaluate(b, s) {

@@ -1,10 +1,10 @@
-import { store } from './store.js?v=202611121512';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121512';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121512';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121512';
-import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121512';
-import { viewTools } from './tools.js?v=202611121512';
-import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611121512';
+import { store } from './store.js?v=202611121529';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121529';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121529';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121529';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121529';
+import { viewTools } from './tools.js?v=202611121529';
+import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611121529';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -43,7 +43,7 @@ async function viewHome() {
   await loadGames(playing.map((s) => s.gameId));
   const games = (m) => GAMES.filter((g) => g.modes.includes(m));
   $app.innerHTML = `<div class="mode-pick">${MODES.map((m) => `<a class="mode-card mode-${m.id}" href="#/games/${m.id}">
-      <span class="mode-icons">${games(m.id).map((g) => gameIcon(g)).join('')}</span>
+      <span class="mode-icons">${games(m.id).slice(0, 5).map((g) => gameIcon(g)).join('')}${games(m.id).length > 5 ? `<span class="more-n">+${games(m.id).length - 5}</span>` : ''}</span>
       <b>${m.name}</b>
       <span class="muted">${m.desc} · ${games(m.id).length}종</span>
     </a>`).join('')}</div>
@@ -248,7 +248,7 @@ async function viewPlay(id) {
   if (!g) return viewNotFound();
   const backHref = `#/games/${sessionMode(s) || 'play'}`; // 이 게임이 있는 목록(직접 플레이 / 점수 기록)
   $app.innerHTML = `<div class="play-top">
-      <h2><a class="back" href="${backHref}" aria-label="게임 목록으로">‹</a>${gameIcon(g, 'sm')} ${g.name}${g.modes.length > 1 ? ` <span class="tag">${MODE_NAME[sessionMode(s)]}</span>` : ''} <span class="muted">${fmtDate(s.createdAt)}</span></h2>
+      <h2><a class="back" href="${backHref}" aria-label="게임 목록으로">‹</a>${gameIcon(g, 'sm')} ${g.name}${g.modes.length > 1 ? ` <span class="tag">${MODE_NAME[sessionMode(s)]}</span>` : ''} <span class="muted pdate">${fmtDate(s.createdAt)}</span></h2>
       <div class="actions">
         ${s.shared ? `<span class="badge shared">${esc(s.ownerName || '다른 계정')}님이 공유</span>` : ''}
         ${menuHtml([
