@@ -7,6 +7,7 @@
   - 혼자면 컴퓨터와: 체스(5단계), 오목·윷놀이·요트다이스·장기(쉬움·보통·어려움). 참가자를 1명만 고르면 컴퓨터가 상대로 들어가고, 계산은 모두 브라우저 안에서 합니다 (`js/games/*-ai.js`). 컴퓨터는 전적·레이팅·업적에서 빠집니다.
 - **도구**: 선 뽑기(손가락·명단 룰렛), 타이머(모래시계·턴 시계), 주사위·코인·셀레스티아 위험 주사위
 - **전적**: 순위표, 상대 전적, 레이팅(Elo), 업적
+  - **친구**(로그인 시): 친구 코드·초대 링크로 친구를 맺으면, 전적에서 '친구만'을 골라 나와 친구끼리만 순위·상대 전적·레이팅을 계산하고, '오늘의 문제' 탭에서 스도쿠·차빼! 오늘의 문제 결과를 친구와 비교
 
  다른 게임은 `js/games/` 에 모듈을 추가하면 됩니다.
 
@@ -36,6 +37,9 @@
 - `users/{uid}/players/{id}`: `{ name, email, createdAt }` — 내 참가자 목록
 - `users/{uid}/meta/settings`: `{ statsResetAt: { [gameId]: ms } }` — 전적 초기화 시점
 - `users/{uid}/notes/{sessionId}`: `{ marks:{ [항목]: { [자리]: 'x'|'o'|'?' } }, rows:{ [항목]: 'out'|'star' }, memo, updatedAt }` — 클루 개인 노트, 본인만 읽기/쓰기
+- `friendCodes/{코드}`: `{ uid, name, email, createdAt }` — 내 친구 코드(6자리). 코드를 아는 사람만 그 문서를 읽음 (목록 조회 불가)
+- `friendships/{작은uid_큰uid}`: `{ members:[uid,uid], people:{ [uid]:{ name, email } }, code, createdAt }` — 상대 코드를 알아야 만들 수 있고, 두 사람만 읽기·끊기
+- `dailyScores/{uid}/items/{게임_날짜_단계_참가자}`: `{ gameId, daily, level, name, score, elapsed, solved, moves, mistakes, hints, sessionId, finishedAt, owner }` — 오늘의 문제 결과(가장 좋은 것). 본인만 쓰고 본인·친구만 읽음
 - `sessions/{id}`: `{ gameId, ownerUid, ownerName, viewerEmails, players:[{id,name,email}], playerIds, settings, data, totals, status:'playing'|'finished', createdAt, updatedAt, finishedAt }`
   - `viewerEmails` 에 든 계정은 읽기/점수 수정 가능, 삭제·공유대상 변경은 `ownerUid` 만
   - 스컬킹 `data`: `{ rounds:[{ bids:[], wins:[], bonus:[] }], current }`, `settings`: `{ startRound, endRound }`

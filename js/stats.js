@@ -1,5 +1,5 @@
 // 전적 계산 (완료된 게임 기록만으로 계산, 따로 저장하지 않음)
-import { getGame } from './games/index.js?v=202611121446';
+import { getGame } from './games/index.js?v=202611121512';
 
 // 동점은 같은 등수 (1, 1, 3 ...)
 export function ranks(totals) {
@@ -24,18 +24,27 @@ export function rankedSessions(sessions, { gameId = null, sinceMap = {} } = {}) 
 }
 
 // 한 게임의 참가자별 결과. 삭제한 참가자(내가 만든 게임 한정)와 컴퓨터는 뺌
-export function seats(s, activeIds) {
+// only: 이 사람(personKey)들만 남김 → '친구만' 보기에서 친구끼리만 계산
+export function seats(s, activeIds, only = null) {
   const rk = ranks(s.totals);
   const tie = getGame(s.gameId)?.tieIsNoWin && rk.every((r) => r === 1);
-  return s.players.map((p, i) => ({ p, i, key: personKey(s, p), name: p.name, rank: rk[i], total: s.totals[i], win: !tie && rk[i] === 1, draw: tie }))
+  const all = s.players.map((p, i) => ({ p, i, key: personKey(s, p), name: p.name, rank: rk[i], total: s.totals[i], win: !tie && rk[i] === 1, draw: tie }))
     .filter((x) => x.p.id !== CPU_ID && !(!s.shared && activeIds && x.p.id && !activeIds.has(x.p.id)));
+  if (!only) return all;
+  const xs = all.filter((x) => only.has(x.key));
+  if (xs.length === all.length) return xs; // 모두 친구(혼자 한 게임·컴퓨터 상대 포함)면 그대로
+  if (xs.length < 2) return []; // 친구가 한 명뿐인 게임은 친구끼리 겨룬 게 아니라서 뺌
+  // 친구만: 남은 사람끼리 등수를 다시 매김 (빠진 사람보다 낮았던 건 따지지 않음)
+  const sub = ranks(xs.map((x) => x.total));
+  const subTie = getGame(s.gameId)?.tieIsNoWin && xs.length > 1 && sub.every((r) => r === 1);
+  return xs.map((x, j) => ({ ...x, rank: sub[j], win: !subTie && sub[j] === 1, draw: subTie }));
 }
 
 // since: 이 시각 이후 게임만 집계(전적 초기화), activeIds: 현재 등록된 참가자만 표시(삭제한 참가자 제외)
-export function computeStats(sessions, gameId, { since = 0, activeIds = null } = {}) {
+export function computeStats(sessions, gameId, { since = 0, activeIds = null, only = null } = {}) {
   const map = new Map();
   for (const s of rankedSessions(sessions, { gameId, sinceMap: { [gameId]: since } })) {
-    for (const x of seats(s, activeIds)) {
+    for (const x of seats(s, activeIds, only)) {
       const st = map.get(x.key) || { name: x.name, played: 0, wins: 0, draws: 0, sum: 0, best: -Infinity, rankSum: 0 };
       st.name = x.name; st.played++; st.sum += x.total; st.rankSum += x.rank;
       st.best = Math.max(st.best, x.total);
@@ -48,7 +57,7 @@ export function computeStats(sessions, gameId, { since = 0, activeIds = null } =
 }
 
 // 상대 전적: 같은 게임에 함께 참가한 두 사람의 등수 비교 (높은 등수 = 승, 같으면 무)
-export function headToHead(sessions, { gameId = null, sinceMap = {}, activeIds = null } = {}) {
+export function headToHead(sessions, { gameId = null, sinceMap = {}, activeIds = null, only = null } = {}) {
   const people = new Map();
   const pairs = new Map(); // "a|b" → { n, w, l, d, byGame }
   const bump = (a, b, gid, res) => {
@@ -59,7 +68,7 @@ export function headToHead(sessions, { gameId = null, sinceMap = {}, activeIds =
     pairs.set(k, x);
   };
   for (const s of rankedSessions(sessions, { gameId, sinceMap })) {
-    const xs = seats(s, activeIds);
+    const xs = seats(s, activeIds, only);
     for (const x of xs) {
       const pe = people.get(x.key) || { key: x.key, name: x.name, n: 0 };
       pe.name = x.name; pe.n++; people.set(x.key, pe);
@@ -74,10 +83,10 @@ export function headToHead(sessions, { gameId = null, sinceMap = {}, activeIds =
 }
 
 // 레이팅(Elo): 1000점 시작. 여럿이 한 게임은 모든 두 사람 쌍을 1:1 대결로 보고 K 를 (인원-1)로 나눔
-export function eloRatings(sessions, gameId, { since = 0, activeIds = null, K = 32 } = {}) {
+export function eloRatings(sessions, gameId, { since = 0, activeIds = null, only = null, K = 32 } = {}) {
   const R = new Map();
   for (const s of rankedSessions(sessions, { gameId, sinceMap: { [gameId]: since } })) {
-    const xs = seats(s, activeIds);
+    const xs = seats(s, activeIds, only);
     if (xs.length < 2) continue;
     for (const x of xs) if (!R.has(x.key)) R.set(x.key, { key: x.key, name: x.name, rating: 1000, played: 0, last: 0, history: [1000] });
     const k = K / (xs.length - 1);

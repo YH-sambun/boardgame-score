@@ -7,7 +7,7 @@
 // session.data = { mode:'local'|'online'|'ai'|'record', white(백을 잡은 자리), moves:[uci], result:{ winner:자리|null, reason }, level, seats:{자리:uid}, drawOffer, seq,
 //   clockOpt, clock:{ base, inc, left:[자리별 남은 ms], at:지금 차례가 시작된 시각|null, paused } }
 // 전적: 이김 1, 비김 0.5, 짐 -1 (진행 중 0)
-import { Chess, createBoard, engine, gameOverInfo, moveListHtml, uciObj } from './chess-board.js?v=202611121446';
+import { Chess, createBoard, engine, gameOverInfo, moveListHtml, uciObj } from './chess-board.js?v=202611121512';
 
 export const CPU_ID = 'cpu';
 export const LEVELS = [
