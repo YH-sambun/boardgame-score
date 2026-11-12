@@ -1,5 +1,5 @@
-import { store } from './store.js?v=202611120726';
-import { GAMES, getGame } from './games/index.js?v=202611120726';
+import { store } from './store.js?v=202611120731';
+import { GAMES, getGame } from './games/index.js?v=202611120731';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -145,7 +145,7 @@ async function viewPlay(id) {
       save: () => { s.totals = g.computeTotals(s); persist(); },
       finish: async () => {
         s.totals = g.computeTotals(s);
-        const incomplete = (s.data.rounds || []).filter((r) => r.wins?.some((w) => w == null)).length;
+        const incomplete = g.incompleteRounds ? g.incompleteRounds(s) : (s.data.rounds || []).filter((r) => r.wins?.some((w) => w == null)).length;
         const msg = incomplete ? `아직 입력이 덜 된 라운드가 ${incomplete}개 있어요. 그래도 종료하고 전적에 기록할까요?` : '게임을 종료하고 전적에 기록할까요?';
         if (!confirm(msg)) return;
         s.status = 'finished'; s.finishedAt = Date.now();
