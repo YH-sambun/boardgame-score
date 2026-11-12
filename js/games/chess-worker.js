@@ -1,5 +1,5 @@
 // 체스 엔진 계산을 화면과 따로 돌리는 웹 워커 (계산 중에도 화면이 멈추지 않게)
-import * as E from './chess-engine.js?v=202611121408';
+import * as E from './chess-engine.js?v=202611121436';
 
 const fns = {
   search: ({ fen, opts }) => E.search(fen, opts),

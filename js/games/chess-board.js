@@ -1,5 +1,5 @@
 // 체스판 화면 + 엔진(웹 워커) 호출 도우미. 체스 대국과 체스 퀴즈가 함께 씁니다.
-import { Chess } from './lib/chess.js?v=202611121408';
+import { Chess } from './lib/chess.js?v=202611121436';
 
 export { Chess };
 
