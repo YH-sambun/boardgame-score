@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 허용할 Google 계정 이메일을 적어 주세요 (가족 계정 등).
+    function allowed() {
+      return request.auth != null
+        && request.auth.token.email in ['your-email@gmail.com'];
+    }
+    match /players/{id} { allow read, write: if allowed(); }
+    match /sessions/{id} { allow read, write: if allowed(); }
+  }
+}

@@ -1,0 +1,256 @@
+import { store } from './store.js';
+import { GAMES, getGame } from './games/index.js';
+
+const $app = document.getElementById('app');
+const $user = document.getElementById('user');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtDate = (ms) => new Date(ms).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
+
+// 동점은 같은 등수 (1, 1, 3 ...)
+export function ranks(totals) {
+  return totals.map((t) => 1 + totals.filter((o) => o > t).length);
+}
+
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ───────── 화면들 ─────────
+async function viewHome() {
+  const sessions = await store.listSessions();
+  const playing = sessions.filter((s) => s.status === 'playing');
+  const recent = sessions.filter((s) => s.status === 'finished').slice(0, 5);
+  $app.innerHTML = `
+    <section class="card">
+      <h2>새 게임</h2>
+      <div class="game-grid">
+        ${GAMES.map((g) => `<a class="game-tile" href="#/new/${g.id}"><span class="emoji">${g.emoji}</span>${g.name}</a>`).join('')}
+        <div class="game-tile disabled"><span class="emoji">➕</span>다른 게임은 추가 예정</div>
+      </div>
+    </section>
+    ${playing.length ? `<section class="card"><h2>진행 중</h2>${playing.map(sessionRow).join('')}</section>` : ''}
+    <section class="card">
+      <h2>최근 기록 <a class="more" href="#/history">전체 보기</a></h2>
+      ${recent.length ? recent.map(sessionRow).join('') : '<p class="muted">아직 끝난 게임이 없어요.</p>'}
+    </section>`;
+}
+
+function sessionRow(s) {
+  const g = getGame(s.gameId);
+  const rk = ranks(s.totals || []);
+  const order = s.players.map((p, i) => ({ name: p.name, total: s.totals?.[i] ?? 0, rank: rk[i] })).sort((a, b) => a.rank - b.rank);
+  return `<a class="srow" href="#/play/${s.id}">
+    <div><b>${g?.emoji || ''} ${esc(g?.name || s.gameId)}</b> <span class="muted">${fmtDate(s.createdAt)}</span>
+      ${s.status === 'playing' ? '<span class="badge">진행 중</span>' : ''}</div>
+    <div class="srow-players">${order.map((o) => `<span class="${o.rank === 1 && s.status === 'finished' ? 'winner' : ''}">${o.rank === 1 && s.status === 'finished' ? '👑' : ''}${esc(o.name)} ${o.total}</span>`).join('')}</div>
+  </a>`;
+}
+
+async function viewNew(gameId) {
+  const g = getGame(gameId);
+  if (!g) return viewNotFound();
+  let players = await store.listPlayers();
+  const selected = [];
+  const settings = Object.fromEntries(g.settingsFields.map((f) => [f.key, f.default]));
+
+  const draw = () => {
+    $app.innerHTML = `
+      <section class="card">
+        <h2>${g.emoji} ${g.name} 새 게임</h2>
+        <p class="muted">참가자를 순서대로 눌러 주세요 (${g.minPlayers}~${g.maxPlayers}명). 누른 순서가 자리 순서가 됩니다.</p>
+        <div class="chips">
+          ${players.map((p) => { const i = selected.indexOf(p.id); return `<button class="chip ${i >= 0 ? 'on' : ''}" data-pick="${p.id}">${i >= 0 ? `<i>${i + 1}</i>` : ''}${esc(p.name)}</button>`; }).join('')}
+        </div>
+        <form class="inline" id="addp"><input name="n" placeholder="새 참가자 이름" maxlength="20" autocomplete="off"><button class="btn">추가</button></form>
+        ${g.settingsFields.map((f) => `<label class="setting">${f.label} <input type="number" data-set="${f.key}" value="${settings[f.key]}" min="${f.min}" max="${f.max}"></label>`).join('')}
+        <button class="btn primary block" id="start" ${selected.length < g.minPlayers ? 'disabled' : ''}>게임 시작 (${selected.length}명)</button>
+      </section>`;
+  };
+  draw();
+
+  $app.onclick = async (e) => {
+    const b = e.target.closest('[data-pick]');
+    if (b) {
+      const id = b.dataset.pick; const i = selected.indexOf(id);
+      if (i >= 0) selected.splice(i, 1); else if (selected.length < g.maxPlayers) selected.push(id);
+      draw(); return;
+    }
+    if (e.target.id === 'start') {
+      const ps = selected.map((id) => players.find((p) => p.id === id)).map((p) => ({ id: p.id, name: p.name }));
+      const now = Date.now();
+      const s = { gameId: g.id, players: ps, playerIds: ps.map((p) => p.id), settings: { ...settings }, status: 'playing', createdAt: now, updatedAt: now };
+      s.data = g.initData(ps, s.settings);
+      s.totals = g.computeTotals(s);
+      e.target.disabled = true;
+      const created = await store.createSession(s);
+      location.hash = `#/play/${created.id}`;
+    }
+  };
+  $app.onsubmit = async (e) => {
+    e.preventDefault();
+    const name = e.target.n.value.trim();
+    if (!name) return;
+    if (players.some((p) => p.name === name)) { toast('이미 있는 이름이에요'); return; }
+    const p = await store.addPlayer(name);
+    players = [...players, p];
+    if (selected.length < g.maxPlayers) selected.push(p.id);
+    draw();
+  };
+  $app.onchange = (e) => {
+    const k = e.target.dataset.set;
+    if (k) { const f = g.settingsFields.find((x) => x.key === k); settings[k] = Math.max(f.min, Math.min(f.max, Number(e.target.value) || f.default)); draw(); }
+  };
+}
+
+async function viewPlay(id) {
+  const s = await store.getSession(id);
+  if (!s) return viewNotFound();
+  const g = getGame(s.gameId);
+  $app.innerHTML = `<div class="play-top">
+      <h2>${g.emoji} ${g.name} <span class="muted">${fmtDate(s.createdAt)}</span></h2>
+      <div class="actions">
+        ${s.status === 'finished' ? '<button class="btn ghost small" id="reopen">다시 수정</button>' : ''}
+        <button class="btn ghost small danger" id="del">삭제</button>
+      </div>
+    </div>
+    <div id="result"></div><div id="board"></div>`;
+
+  const showResult = () => {
+    const box = document.getElementById('result');
+    if (s.status !== 'finished') { box.innerHTML = ''; return; }
+    const rk = ranks(s.totals);
+    const order = s.players.map((p, i) => ({ name: p.name, total: s.totals[i], rank: rk[i] })).sort((a, b) => a.rank - b.rank);
+    box.innerHTML = `<section class="card result"><h3>최종 결과</h3><ol class="podium">${order.map((o) => `<li><span class="rk">${o.rank === 1 ? '👑' : o.rank + '등'}</span>${esc(o.name)}<b>${o.total}점</b></li>`).join('')}</ol></section>`;
+  };
+
+  const persist = debounce(async () => {
+    try { await store.updateSession(s.id, { data: s.data, totals: s.totals, updatedAt: Date.now() }); }
+    catch (err) { console.error(err); toast('저장 실패: ' + err.message); }
+  }, 400);
+
+  const render = () => {
+    showResult();
+    g.renderPlay(document.getElementById('board'), s, {
+      save: () => { s.totals = g.computeTotals(s); persist(); },
+      finish: async () => {
+        s.totals = g.computeTotals(s);
+        const incomplete = (s.data.rounds || []).filter((r) => r.wins?.some((w) => w == null)).length;
+        const msg = incomplete ? `아직 입력이 덜 된 라운드가 ${incomplete}개 있어요. 그래도 종료하고 전적에 기록할까요?` : '게임을 종료하고 전적에 기록할까요?';
+        if (!confirm(msg)) return;
+        s.status = 'finished'; s.finishedAt = Date.now();
+        await store.updateSession(s.id, { data: s.data, totals: s.totals, status: s.status, finishedAt: s.finishedAt, updatedAt: Date.now() });
+        toast('전적에 기록했어요');
+        viewPlay(s.id);
+      },
+    });
+  };
+  render();
+
+  document.getElementById('del').onclick = async () => {
+    if (!confirm('이 게임 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
+    await store.deleteSession(s.id); location.hash = '#/';
+  };
+  const re = document.getElementById('reopen');
+  if (re) re.onclick = async () => { s.status = 'playing'; await store.updateSession(s.id, { status: 'playing' }); viewPlay(s.id); };
+  $app.onclick = null; $app.onsubmit = null; $app.onchange = null;
+}
+
+async function viewHistory() {
+  const sessions = await store.listSessions();
+  const filter = new URLSearchParams(location.hash.split('?')[1] || '').get('game') || '';
+  const list = sessions.filter((s) => !filter || s.gameId === filter);
+  $app.innerHTML = `<section class="card">
+    <h2>전체 기록</h2>
+    <div class="chips">
+      <a class="chip ${!filter ? 'on' : ''}" href="#/history">전체</a>
+      ${GAMES.map((g) => `<a class="chip ${filter === g.id ? 'on' : ''}" href="#/history?game=${g.id}">${g.emoji} ${g.name}</a>`).join('')}
+    </div>
+    ${list.length ? list.map(sessionRow).join('') : '<p class="muted">기록이 없어요.</p>'}
+  </section>`;
+}
+
+export function computeStats(sessions, gameId) {
+  const map = new Map();
+  for (const s of sessions) {
+    if (s.status !== 'finished' || s.gameId !== gameId) continue;
+    const rk = ranks(s.totals);
+    s.players.forEach((p, i) => {
+      const key = p.id || p.name;
+      const st = map.get(key) || { name: p.name, played: 0, wins: 0, sum: 0, best: -Infinity, rankSum: 0 };
+      st.name = p.name; st.played++; st.sum += s.totals[i]; st.rankSum += rk[i];
+      st.best = Math.max(st.best, s.totals[i]);
+      if (rk[i] === 1) st.wins++;
+      map.set(key, st);
+    });
+  }
+  return [...map.values()].map((st) => ({ ...st, winRate: st.wins / st.played, avg: st.sum / st.played, avgRank: st.rankSum / st.played }))
+    .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate || b.avg - a.avg);
+}
+
+async function viewStats() {
+  const sessions = await store.listSessions();
+  const gameId = new URLSearchParams(location.hash.split('?')[1] || '').get('game') || GAMES[0].id;
+  const g = getGame(gameId);
+  const stats = computeStats(sessions, gameId);
+  const games = sessions.filter((s) => s.status === 'finished' && s.gameId === gameId).length;
+  $app.innerHTML = `<section class="card">
+    <h2>전적</h2>
+    <div class="chips">${GAMES.map((x) => `<a class="chip ${x.id === gameId ? 'on' : ''}" href="#/stats?game=${x.id}">${x.emoji} ${x.name}</a>`).join('')}</div>
+    <p class="muted">${g.name} 완료 게임 ${games}판</p>
+    ${stats.length ? `<div class="table-wrap"><table class="stats">
+      <thead><tr><th>#</th><th>이름</th><th>판수</th><th>1등</th><th>승률</th><th>평균 점수</th><th>최고</th><th>평균 등수</th></tr></thead>
+      <tbody>${stats.map((st, i) => `<tr><td>${i + 1}</td><td><b>${esc(st.name)}</b></td><td>${st.played}</td><td>${st.wins}</td><td>${Math.round(st.winRate * 100)}%</td><td>${Math.round(st.avg)}</td><td>${st.best}</td><td>${st.avgRank.toFixed(1)}</td></tr>`).join('')}</tbody>
+    </table></div>` : '<p class="muted">완료된 게임이 생기면 여기 쌓여요.</p>'}
+  </section>`;
+}
+
+function viewNotFound() { $app.innerHTML = '<section class="card"><p>찾을 수 없어요.</p><a href="#/">처음으로</a></section>'; }
+
+function viewLogin() {
+  $app.innerHTML = `<section class="card center">
+    <h2>로그인이 필요해요</h2>
+    <p class="muted">점수는 Firestore에 저장돼서 어느 기기에서나 볼 수 있어요.</p>
+    <button class="btn primary" id="login">Google로 로그인</button>
+  </section>`;
+  document.getElementById('login').onclick = () => store.signIn().catch((e) => toast(e.message));
+}
+
+// ───────── 라우터 ─────────
+async function route() {
+  $app.onclick = $app.onsubmit = $app.onchange = null;
+  if (store.mode === 'firebase' && !store.user) return viewLogin();
+  const [path] = location.hash.replace(/^#/, '').split('?');
+  const parts = path.split('/').filter(Boolean);
+  document.querySelectorAll('nav a').forEach((a) => a.classList.toggle('active', a.getAttribute('href').split('?')[0] === '#/' + (parts[0] || '')));
+  try {
+    if (!parts.length) await viewHome();
+    else if (parts[0] === 'new') await viewNew(parts[1]);
+    else if (parts[0] === 'play') await viewPlay(parts[1]);
+    else if (parts[0] === 'history') await viewHistory();
+    else if (parts[0] === 'stats') await viewStats();
+    else viewNotFound();
+  } catch (err) {
+    console.error(err);
+    $app.innerHTML = `<section class="card"><h2>오류</h2><p>${esc(err.message)}</p><p class="muted">Firestore 보안 규칙에 내 계정이 허용돼 있는지 확인해 주세요.</p></section>`;
+  }
+}
+
+async function main() {
+  try { await store.init(); } catch (err) { $app.innerHTML = `<section class="card"><p>Firebase 초기화 실패: ${esc(err.message)}</p></section>`; return; }
+  store.onAuth((u) => {
+    $user.innerHTML = store.mode === 'local'
+      ? '<span class="muted" title="firebase-config.js를 채우면 Firestore에 저장됩니다">이 기기에만 저장</span>'
+      : u ? `<button class="btn ghost small" id="logout">${esc(u.displayName || u.email)} · 로그아웃</button>` : '';
+    const lo = document.getElementById('logout');
+    if (lo) lo.onclick = () => store.signOut();
+    route();
+  });
+  window.addEventListener('hashchange', route);
+}
+
+if (typeof document !== 'undefined' && $app) main();
