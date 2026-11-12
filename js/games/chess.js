@@ -7,7 +7,8 @@
 // session.data = { mode:'local'|'online'|'ai'|'record', white(백을 잡은 자리), moves:[uci], result:{ winner:자리|null, reason }, level, seats:{자리:uid}, drawOffer, seq,
 //   clockOpt, clock:{ base, inc, left:[자리별 남은 ms], at:지금 차례가 시작된 시각|null, paused } }
 // 전적: 이김 1, 비김 0.5, 짐 -1 (진행 중 0)
-import { Chess, createBoard, engine, gameOverInfo, moveListHtml, uciObj } from './chess-board.js?v=202611121512';
+import { selectHtml } from '../ui.js?v=202611121529';
+import { Chess, createBoard, engine, gameOverInfo, moveListHtml, uciObj } from './chess-board.js?v=202611121529';
 
 export const CPU_ID = 'cpu';
 export const LEVELS = [
@@ -200,8 +201,7 @@ export default {
     }
 
     // ── 화면 ──
-    const clockPick = () => `<p class="muted">체스 시계</p>
-      <div class="chips">${CLOCKS.map((c, i) => `<button class="chip ${(d.clockOpt || 0) === i ? 'on' : ''}" data-clock-opt="${i}">${c.label}</button>`).join('')}</div>
+    const clockPick = () => `<label class="setting"><span>체스 시계</span>${selectHtml('data-clock-sel', CLOCKS.map((c, i) => [i, c.label]), d.clockOpt || 0)}</label>
       ${d.clockOpt ? '<p class="muted">각자 남은 시간이 판 위아래에 보여요. 수를 두면 상대 시계가 가고, 시간이 다 되면 져요.</p>' : ''}`;
     const setupHtml = () => {
       if (d.mode === 'ai') {
@@ -214,8 +214,7 @@ export default {
             <button class="chip ${d.white === cpuIdx ? 'on' : ''}" data-white="${cpuIdx}">⚫ 흑</button>
             <button class="chip" data-white="rand">🎲 무작위</button>
           </div>
-          <p class="muted">컴퓨터 실력</p>
-          <div class="chips">${LEVELS.map((l, i) => `<button class="chip ${d.level === i ? 'on' : ''}" data-level="${i}">${l.label}</button>`).join('')}</div>
+          <label class="setting"><span>컴퓨터 실력</span>${selectHtml('data-level-sel', LEVELS.map((l, i) => [i, l.label]), d.level)}</label>
           ${clockPick()}
           <button class="btn primary block" data-act="start">대국 시작</button>
         </section>`;
@@ -312,6 +311,11 @@ export default {
       });
     }
 
+    root.onchange = (e) => {
+      const ds = e.target.dataset;
+      if (ds.levelSel != null) { d.level = Number(e.target.value); draw(); }
+      else if (ds.clockSel != null) { d.clockOpt = Number(e.target.value); draw(); }
+    };
     root.onclick = async (e) => {
       const t = e.target.closest('button');
       if (!t || t.disabled || t.closest('#cb')) return;
@@ -429,8 +433,7 @@ function renderRecord(root, session, ctx) {
         <button class="chip ${pk === 'b' ? 'on' : ''}" data-res="b">⚫ 흑 ${name(1 - d.white)} 승</button>
         <button class="chip ${pk === 'draw' ? 'on' : ''}" data-res="draw">무승부</button>
       </div>
-      <p class="muted">어떻게 끝났나요 (선택)</p>
-      <div class="chips">${REASONS.map((x) => `<button class="chip ${res?.reason === x ? 'on' : ''}" data-reason="${x}">${x}</button>`).join('')}</div>
+      <label class="setting"><span>끝난 방식</span>${selectHtml(`data-reason-sel ${res ? '' : 'disabled'}`, [['', '고르지 않음'], ...REASONS.map((x) => [x, x])], res?.reason || '')}</label>
       <label class="setting"><span>둔 수 (선택)</span><input type="number" min="1" max="500" inputmode="numeric" data-count value="${d.count || ''}" placeholder="예: 42"></label>
       <button class="btn primary block" data-act="finish" ${res ? '' : 'disabled'}>전적에 기록</button>
     </section>`;
@@ -453,6 +456,7 @@ function renderRecord(root, session, ctx) {
     ctx.save(); draw();
   };
   root.onchange = (e) => {
+    if (e.target.matches('[data-reason-sel]')) { if (d.result) { d.result.reason = e.target.value || null; ctx.save(); } return; }
     if (!e.target.matches('[data-count]')) return;
     const n = Math.round(Number(e.target.value));
     d.count = n > 0 ? Math.min(500, n) : null;

@@ -1,8 +1,18 @@
 // 도구: 선 뽑기 · 타이머 · 주사위/코인. 모두 이 기기 안에서만 동작하고 저장하지 않음
-import { tipBtn, tipBody, selectHtml } from './ui.js?v=202611121512';
+import { selectHtml } from './ui.js?v=202611121529';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rand = (n) => Math.floor(Math.random() * n);
-const TABS = [['pick', '선 뽑기'], ['timer', '타이머'], ['dice', '주사위·코인']];
+// 도구 목록: 첫 화면은 큰 버튼만, 누르면 그 도구 하나만 보여 줌
+const TOOLS = [
+  { id: 'finger', name: '손가락 선 뽑기', desc: '다 같이 화면에 손가락 올리기', icon: '☝️' },
+  { id: 'roulette', name: '이름 뽑기', desc: '참가자 중 한 명 돌려 뽑기', icon: '🎯' },
+  { id: 'sand', name: '모래시계', desc: '정한 시간 거꾸로 세기', icon: '⏳' },
+  { id: 'clock', name: '턴 시계', desc: '누를 때마다 다음 사람', icon: '⏱️' },
+  { id: 'dice', name: '주사위', desc: '1~6개, 4~20면체', icon: '🎲' },
+  { id: 'coin', name: '동전 던지기', desc: '앞 · 뒤', icon: '🪙' },
+  { id: 'celestia', name: '셀레스티아 주사위', desc: '위험 주사위 굴리기', icon: '🎈' },
+];
+const OLD_TAB = { pick: 'finger', timer: 'sand' }; // 예전 주소
 const COLORS = ['#b8452f', '#2f6f9f', '#3d7a4a', '#c08a1e', '#7a4b8c', '#1d2a3a', '#d0627a', '#2b8a8a', '#8a5a2b', '#5a6b7d'];
 
 // 화면을 옮겨도 남는 상태 (도구 탭 사이를 오가도 유지)
@@ -37,41 +47,40 @@ const mmss = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Ma
 export async function viewTools($app, { store, tab }) {
   stopAll();
   addEventListener('hashchange', stopAll, { once: true });
-  const cur = TABS.some(([k]) => k === tab) ? tab : 'pick';
+  const t = TOOLS.find((x) => x.id === (OLD_TAB[tab] || tab));
+  if (!t) {
+    $app.innerHTML = `<h2 class="page-h">도구</h2>
+      <div class="tool-grid">${TOOLS.map((x) => `<a class="tool-tile" href="#/tools/${x.id}"><span class="tool-ic" aria-hidden="true">${x.icon}</span><b>${x.name}</b><span class="muted">${x.desc}</span></a>`).join('')}</div>`;
+    return;
+  }
   // 참가자 목록은 기다리지 않고 바로 화면을 그림 (느린 네트워크에서 멈춘 것처럼 보이지 않게)
   const players = (cache.players || []).slice();
-  $app.innerHTML = `<section class="card tools">
-    <h2>도구</h2>
-    <div class="seg">${TABS.map(([k, l]) => `<a class="${k === cur ? 'on' : ''}" href="#/tools/${k}">${l}</a>`).join('')}</div>
-    <div id="tool"></div>
-  </section>`;
+  $app.innerHTML = `<section class="card tools tool-one">
+      <h2><a class="back" href="#/tools" aria-label="도구 목록으로">‹</a>${t.name}</h2>
+      <div id="tool"></div>
+    </section>`;
   const root = $app.querySelector('#tool');
   const show = () => {
-    if (cur === 'pick') pickTool(root, players);
-    else if (cur === 'timer') timerTool(root, players);
-    else diceTool(root);
+    if (t.id === 'finger' || t.id === 'roulette') pickTool(root, players, t.id === 'finger' ? 'finger' : 'list');
+    else if (t.id === 'sand' || t.id === 'clock') timerTool(root, players, t.id);
+    else diceTool(root, t.id);
   };
   show();
-  if (cur === 'dice') return;
+  if (!['roulette', 'clock'].includes(t.id)) return;
   store.listPlayers().then((ps) => {
     cache.players = ps;
     if (!root.isConnected || JSON.stringify(ps) === JSON.stringify(players)) return;
     players.splice(0, players.length, ...ps);
-    // 손가락 뽑기 중에는 화면을 다시 그리지 않음 (명단 모드로 바꾸면 새 목록이 보임)
-    if (cur === 'pick' && st.pickMode === 'finger') return;
     stopAll(); addEventListener('hashchange', stopAll, { once: true }); show();
   }).catch(() => {});
 }
 const cache = {};
 
 // ───── 선 뽑기 ─────
-function pickTool(root, players) {
+function pickTool(root, players, mode) {
+  st.pickMode = mode;
   const draw = () => {
-    root.innerHTML = `<div class="chips">
-        <button class="chip ${st.pickMode === 'finger' ? 'on' : ''}" data-mode="finger">손가락으로</button>
-        <button class="chip ${st.pickMode === 'list' ? 'on' : ''}" data-mode="list">명단에서</button>
-      </div>
-      ${st.pickMode === 'finger' ? `<div class="finger-pad" id="pad"><p class="muted">다 같이 화면에 손가락을 올리고 기다리세요.<br>잠시 뒤 한 명이 뽑혀요.</p></div>`
+    root.innerHTML = `${st.pickMode === 'finger' ? `<div class="finger-pad" id="pad"><p class="muted">다 같이 화면에 손가락을 올리고 기다리세요.<br>잠시 뒤 한 명이 뽑혀요.</p></div>`
       : `<p class="muted">뽑을 사람을 고르고 돌리기를 누르세요.</p>
         <div class="chips" id="names">${players.map((p) => `<button class="chip ${st.picked.includes(p.id) ? 'on' : ''}" data-p="${p.id}">${esc(p.name)}</button>`).join('') || '<span class="muted">오른쪽 위 메뉴 → 참가자 관리에서 참가자를 먼저 추가해 주세요.</span>'}</div>
         <div class="roulette" id="rl">${st.picked.map((id) => `<span data-r="${id}">${esc(players.find((p) => p.id === id)?.name)}</span>`).join('')}</div>
@@ -150,7 +159,7 @@ function finger(pad) {
 }
 
 // ───── 타이머 ─────
-function timerTool(root, players) {
+function timerTool(root, players, part) {
   const S = st.sand; const C = st.clock;
   if (!C.names.length) C.names = players.slice(0, 4).map((p) => p.name);
   const sandLeft = () => (S.run ? S.left - (Date.now() - S.at) : S.left);
@@ -158,14 +167,11 @@ function timerTool(root, players) {
   const draw = () => {
     const ct = clockNow();
     const sandOpts = [...new Set([30, 60, 90, 120, 180, 300, 600, 900, 1200, 1800, S.total])].sort((a, b) => a - b).map((x) => [x, x < 60 ? `${x}초` : x % 60 ? `${Math.floor(x / 60)}분 ${x % 60}초` : `${x / 60}분`]);
-    root.innerHTML = `<h3>모래시계</h3>
-      <label class="setting"><span>시간</span>${selectHtml('id="sandSel"', sandOpts, S.total)}</label>
+    root.innerHTML = part === 'sand' ? `<label class="setting"><span>시간</span>${selectHtml('id="sandSel"', sandOpts, S.total)}</label>
       <div class="big-time ${sandLeft() <= 0 ? 'over' : ''}" id="sandT">${mmss(sandLeft())}</div>
       <div class="bar"><span id="sandBar" style="width:${Math.max(0, sandLeft() / (S.total * 1000)) * 100}%"></span></div>
-      <div class="row-btns"><button class="btn primary" data-act="sand">${S.run ? '멈춤' : sandLeft() <= 0 ? '다시' : '시작'}</button><button class="btn" data-act="sandReset">처음으로</button></div>
-
-      <h3 class="sub-h">턴 시계 ${tipBtn()}</h3>
-      ${tipBody('<p>화면을 누르면 다음 사람으로 넘어가요. 1인당 제한 시간을 정하면 남은 시간이, 제한 없음이면 쓴 시간이 보여요.</p>')}
+      <div class="row-btns"><button class="btn primary" data-act="sand">${S.run ? '멈춤' : sandLeft() <= 0 ? '다시' : '시작'}</button><button class="btn" data-act="sandReset">처음으로</button></div>`
+      : `<p class="muted">화면을 누르면 다음 사람으로 넘어가요. 제한 시간을 정하면 남은 시간이, 없으면 쓴 시간이 보여요.</p>
       <div class="chips">${players.map((p) => `<button class="chip ${C.names.includes(p.name) ? 'on' : ''}" data-cn="${esc(p.name)}">${esc(p.name)}</button>`).join('')}</div>
       <label class="setting"><span>1인당 제한</span>${selectHtml('id="per"', [...new Set([0, 1, 2, 3, 5, 10, 15, 20, 30, 60, C.per])].sort((a, b) => a - b).map((m) => [m, m ? `${m}분` : '제한 없음']), C.per)}</label>
       ${C.names.length ? `<button class="turn-pad ${C.run ? 'run' : ''}" data-act="next">
@@ -227,27 +233,22 @@ export const dieFace = (v, sides = 6) => (sides === 6 && v >= 1 && v <= 6
 // 셀레스티아 위험 주사위: 6면 중 4면에 위험 그림, 2면은 빈 면 (가지고 있는 판본과 다르면 알려 주세요)
 const CEL_FACES = ['', '', '먹구름', '번개', '새떼', '해적'];
 
-function diceTool(root) {
+function diceTool(root, part) {
   const D = st.dice;
   const draw = () => {
     const total = D.vals.reduce((a, b) => a + b, 0);
-    root.innerHTML = `<h3>주사위 ${tipBtn()}</h3>
-      ${tipBody('<p>굴린 뒤 주사위를 누르면 고정돼요. 고정한 주사위는 다시 굴려도 그대로예요.</p>')}
-      <div class="toolbar">
+    root.innerHTML = part === 'dice' ? `<div class="toolbar">
         <label class="pick">${selectHtml('data-dn', [1, 2, 3, 4, 5, 6].map((n) => [n, `${n}개`]), D.n)}</label>
         <label class="pick">${selectHtml('data-ds', [4, 6, 8, 10, 12, 20].map((x) => [x, `${x}면체`]), D.sides)}</label>
       </div>
       <div class="dice-tray">${Array.from({ length: D.n }, (_, i) => `<button class="die ${D.held[i] ? 'held' : ''} ${D.sides !== 6 ? 'num' : ''}" data-hold="${i}" ${D.vals[i] == null ? 'disabled' : ''}>${dieFace(D.vals[i], D.sides)}</button>`).join('')}</div>
       <p class="center dice-sum">${D.vals.length ? `합계 <b>${total}</b>` : '<span class="muted">굴리기를 누르세요</span>'}${D.held.some(Boolean) ? ' <span class="muted">· 고정한 주사위는 그대로</span>' : ''}</p>
       <div class="row-btns"><button class="btn primary" data-act="roll">굴리기</button><button class="btn" data-act="free" ${D.held.some(Boolean) ? '' : 'disabled'}>고정 풀기</button></div>
-      ${D.hist.length ? `<div class="hist muted">최근: ${D.hist.map((h) => h.join('·')).join(' / ')}</div>` : ''}
-
-      <h3 class="sub-h">코인</h3>
-      <button class="coin ${st.coin ? 'c-' + st.coin : ''}" data-act="coin"><span>${st.coin === 'h' ? '앞' : st.coin === 't' ? '뒤' : '?'}</span></button>
-      <p class="center muted">동전을 눌러 던지기</p>
-
-      <h3 class="sub-h">셀레스티아 위험 주사위 ${tipBtn()}</h3>
-      ${tipBody('<p>도시 칸에 적힌 수만큼 굴려요. 나온 위험마다 선장이 맞는 장비 카드를 내야 해요.</p>')}
+      <p class="muted center">굴린 뒤 주사위를 누르면 고정돼요.</p>
+      ${D.hist.length ? `<div class="hist muted">최근: ${D.hist.map((h) => h.join('·')).join(' / ')}</div>` : ''}`
+      : part === 'coin' ? `<button class="coin ${st.coin ? 'c-' + st.coin : ''}" data-act="coin"><span>${st.coin === 'h' ? '앞' : st.coin === 't' ? '뒤' : '?'}</span></button>
+      <p class="center muted">동전을 눌러 던지기</p>`
+      : `<p class="muted">도시 칸에 적힌 수만큼 굴려요. 나온 위험마다 선장이 맞는 장비 카드를 내야 해요.</p>
       <label class="pick">${selectHtml('data-celn', [1, 2, 3, 4].map((n) => [n, `${n}개`]), st.cel.n)}</label>
       <div class="dice-tray">${Array.from({ length: st.cel.n }, (_, i) => { const v = st.cel.vals[i]; return `<span class="die cel ${v ? 'hit' : ''}">${v == null ? '?' : v || '빈 면'}</span>`; }).join('')}</div>
       <div class="row-btns"><button class="btn primary" data-act="cel">굴리기</button></div>`;
