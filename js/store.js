@@ -1,12 +1,12 @@
 // 저장소: Firebase 설정이 있으면 Firestore, 없으면 localStorage
-import { firebaseConfig } from './firebase-config.js?v=202611120746';
+import { firebaseConfig } from './firebase-config.js?v=202611120750';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
 function localStore() {
   const KEY = 'bgscore:v1';
-  const load = () => { let d; try { d = JSON.parse(localStorage.getItem(KEY)); } catch {} d = d || {}; return { players: [], sessions: [], meta: {}, ...d }; };
+  const load = () => { let d; try { d = JSON.parse(localStorage.getItem(KEY)); } catch {} d = d || {}; return { players: [], sessions: [], meta: {}, notes: {}, ...d }; };
   const persist = (db) => localStorage.setItem(KEY, JSON.stringify(db));
   return {
     mode: 'local',
@@ -29,7 +29,9 @@ function localStore() {
     async createSession(s) { const db = load(); const n = { ...s, id: uid() }; db.sessions.push(n); persist(db); return n; },
     async getSession(id) { return load().sessions.find((s) => s.id === id) || null; },
     async updateSession(id, patch) { const db = load(); const i = db.sessions.findIndex((s) => s.id === id); if (i >= 0) { db.sessions[i] = { ...db.sessions[i], ...patch }; persist(db); } },
-    async deleteSession(id) { const db = load(); db.sessions = db.sessions.filter((s) => s.id !== id); persist(db); },
+    async deleteSession(id) { const db = load(); db.sessions = db.sessions.filter((s) => s.id !== id); delete db.notes[id]; persist(db); },
+    async getNote(sid) { return load().notes[sid] || null; },
+    async setNote(sid, note) { const db = load(); db.notes[sid] = note; persist(db); },
     async listSessions() { return load().sessions.sort((a, b) => b.createdAt - a.createdAt); },
   };
 }
@@ -37,6 +39,7 @@ function localStore() {
 // Firestore 구조
 //  users/{uid}/players, users/{uid}/meta : 내 계정 전용
 //  sessions/{id} : 게임 기록. ownerUid(만든 사람) + viewerEmails(참가자에 연결된 이메일)
+//  sessions/{id}/notes/{uid} : 그 게임에서 쓰는 내 개인 노트(클루 추리 노트). 본인만 읽기/쓰기
 //    → 참가자에 이메일을 연결하면 그 계정에서도 해당 게임을 보고 점수를 입력할 수 있음 (삭제는 만든 사람만)
 const normEmail = (e) => String(e || '').trim().toLowerCase();
 const viewerEmailsOf = (players) => [...new Set(players.map((p) => normEmail(p.email)).filter(Boolean))];
@@ -46,6 +49,7 @@ function firestoreStore() {
   const col = (name) => fs.collection(db, 'users', s.user.uid, name);
   const ref = (name, id) => fs.doc(db, 'users', s.user.uid, name, id);
   const sref = (id) => fs.doc(db, 'sessions', id);
+  const nref = (id) => fs.doc(db, 'sessions', id, 'notes', s.user.uid);
   const withFlags = (d) => ({ id: d.id, ...d.data(), shared: d.data().ownerUid !== s.user.uid });
   const ownSessions = async () => (await fs.getDocs(fs.query(fs.collection(db, 'sessions'), fs.where('ownerUid', '==', s.user.uid)))).docs;
 
@@ -122,7 +126,13 @@ function firestoreStore() {
       catch (e) { if (e.code === 'permission-denied') return null; throw e; }
     },
     async updateSession(id, patch) { await fs.updateDoc(sref(id), patch); },
-    async deleteSession(id) { await fs.deleteDoc(sref(id)); },
+    async deleteSession(id) {
+      await fs.deleteDoc(nref(id)).catch(() => {});
+      await fs.deleteDoc(sref(id));
+    },
+    // 개인 노트: sessions/{id}/notes/{내 uid} — 규칙상 본인만 읽고 쓸 수 있음
+    async getNote(sid) { const d = await fs.getDoc(nref(sid)); return d.exists() ? d.data() : null; },
+    async setNote(sid, note) { await fs.setDoc(nref(sid), note); },
     async listSessions() {
       const email = normEmail(s.user.email);
       const [own, shared] = await Promise.all([
