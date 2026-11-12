@@ -451,3 +451,6 @@ table.h2h td.self{background:var(--chip)}
 .ycell.preview{color:var(--muted);border-color:var(--muted)}
 .round-nav .btn{white-space:nowrap}
 .game-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+.gmark.ico{background:none;font-size:34px;line-height:1}
+.gmark.ico.sm{font-size:19px}
+.gmark.ico.big{font-size:50px}

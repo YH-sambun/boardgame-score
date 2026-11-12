@@ -1,5 +1,5 @@
 // 저장소: Firebase 설정이 있으면 Firestore, 없으면 localStorage
-import { firebaseConfig } from './firebase-config.js?v=202611121111';
+import { firebaseConfig } from './firebase-config.js?v=202611121133';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -54,6 +54,36 @@ function firestoreStore() {
   const withFlags = (d) => ({ id: d.id, ...d.data(), shared: d.data().ownerUid !== s.user.uid });
   const ownSessions = async () => (await fs.getDocs(fs.query(fs.collection(db, 'sessions'), fs.where('ownerUid', '==', s.user.uid)))).docs;
 
+  // 실시간 동기화: 로그인 후 내 기록·공유받은 기록·참가자를 한 번 받아 두고, 바뀐 것만 계속 받아 옴.
+  //  → 메뉴를 옮길 때마다 서버에서 다시 받지 않아 빠르고, 다른 기기에서 바꾼 내용도 바로 반영됨
+  let live = null;
+  function stopLive() { if (live) { live.unsubs.forEach((u) => u()); live = null; } }
+  function startLive() {
+    if (live || !s.user) return;
+    const uidNow = s.user.uid;
+    const email = normEmail(s.user.email);
+    const L = { uid: uidNow, own: null, shared: email ? null : new Map(), players: null, meta: null, unsubs: [], failed: false };
+    const watch = (q, apply) => new Promise((res) => {
+      L.unsubs.push(fs.onSnapshot(q, (snap) => { apply(snap); res(); }, (e) => { console.error('live', e); L.failed = true; res(); }));
+    });
+    const sessCol = fs.collection(db, 'sessions');
+    L.ready = Promise.all([
+      watch(fs.query(sessCol, fs.where('ownerUid', '==', uidNow)), (snap) => { L.own = new Map(snap.docs.map((d) => [d.id, d])); }),
+      email ? watch(fs.query(sessCol, fs.where('viewerEmails', 'array-contains', email)), (snap) => { L.shared = new Map(snap.docs.map((d) => [d.id, d])); }) : null,
+      watch(col('players'), (snap) => { L.players = snap.docs.map((d) => ({ id: d.id, ...d.data() })); }),
+    ]);
+    live = L;
+  }
+  // 실시간 데이터가 준비됐으면 그걸 쓰고, 아니면 null (예전 방식으로 서버에서 받음)
+  async function liveData() {
+    if (!s.user) return null;
+    if (live && live.uid !== s.user.uid) stopLive();
+    startLive();
+    const L = live;
+    await L.ready;
+    return L.failed ? null : L;
+  }
+
   // 예전 위치(users/{uid}/sessions)의 기록을 공유 가능한 위치로 한 번 옮김
   async function migrate() {
     const old = await fs.getDocs(col('sessions'));
@@ -81,6 +111,7 @@ function firestoreStore() {
     },
     onAuth(cb) {
       A.onAuthStateChanged(auth, async (u) => {
+        if (!u || u.uid !== live?.uid) stopLive();
         s.user = u;
         if (u) { try { await migrate(); } catch (e) { console.error('migrate', e); } }
         cb(u);
@@ -89,6 +120,8 @@ function firestoreStore() {
     async signIn() { await A.signInWithPopup(auth, new A.GoogleAuthProvider()); },
     async signOut() { await A.signOut(auth); },
     async listPlayers() {
+      const L = await liveData();
+      if (L) return L.players.slice().sort((a, b) => a.name.localeCompare(b.name, 'ko'));
       const snap = await fs.getDocs(col('players'));
       return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
     },
@@ -115,14 +148,26 @@ function firestoreStore() {
       await fs.updateDoc(ref('players', id), { email });
       await s._patchOwnSessions(id, (p) => ({ ...p, email }));
     },
-    async getMeta() { const d = await fs.getDoc(ref('meta', 'settings')); return d.exists() ? d.data() : {}; },
-    async setMeta(patch) { await fs.setDoc(ref('meta', 'settings'), patch, { merge: true }); },
+    async getMeta() {
+      if (live?.meta && live.uid === s.user.uid) return live.meta;
+      const d = await fs.getDoc(ref('meta', 'settings'));
+      const m = d.exists() ? d.data() : {};
+      if (live && live.uid === s.user.uid) live.meta = m;
+      return m;
+    },
+    async setMeta(patch) {
+      await fs.setDoc(ref('meta', 'settings'), patch, { merge: true });
+      if (live) live.meta = { ...(live.meta || {}), ...patch };
+    },
     async createSession(x) {
       const data = { ...x, ownerUid: s.user.uid, ownerName: s.user.displayName || '', viewerEmails: viewerEmailsOf(x.players) };
       const r = await fs.addDoc(fs.collection(db, 'sessions'), data);
       return { id: r.id, ...data, shared: false };
     },
     async getSession(id) {
+      const L = await liveData().catch(() => null);
+      const hit = L && (L.own.get(id) || L.shared.get(id));
+      if (hit) return withFlags(hit);
       try { const d = await fs.getDoc(sref(id)); return d.exists() ? withFlags(d) : null; }
       catch (e) { if (e.code === 'permission-denied') return null; throw e; }
     },
@@ -139,6 +184,12 @@ function firestoreStore() {
     },
     async setNote(sid, note) { await fs.setDoc(nref(sid), note); },
     async listSessions() {
+      const L = await liveData();
+      if (L) {
+        const map = new Map();
+        [...L.own.values(), ...L.shared.values()].forEach((d) => map.set(d.id, withFlags(d)));
+        return [...map.values()].sort((a, b) => b.createdAt - a.createdAt);
+      }
       const email = normEmail(s.user.email);
       const [own, shared] = await Promise.all([
         ownSessions(),

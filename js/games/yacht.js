@@ -9,7 +9,7 @@
 //   - 요트(Yacht): 5개 모두 같으면 50
 //  조건을 못 맞춘 칸에 기록하면 0점. 매 차례 반드시 한 칸을 채워야 하며, 12번 차례면 끝.
 
-import { dieFace } from '../tools.js?v=202611121111';
+import { dieFace } from '../tools.js?v=202611121133';
 
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const uniqSorted = (xs) => [...new Set(xs)].sort((a, b) => a - b);

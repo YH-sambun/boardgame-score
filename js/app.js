@@ -1,8 +1,8 @@
-import { store } from './store.js?v=202611121111';
-import { GAMES, getGame, loadGame, loadGames, gameIcon } from './games/index.js?v=202611121111';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121111';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121111';
-import { viewTools } from './tools.js?v=202611121111';
+import { store } from './store.js?v=202611121133';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121133';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121133';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121133';
+import { viewTools } from './tools.js?v=202611121133';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -477,6 +477,8 @@ async function route() {
   const [path] = location.hash.replace(/^#/, '').split('?');
   const parts = path.split('/').filter(Boolean);
   document.querySelectorAll('nav a').forEach((a) => a.classList.toggle('active', a.getAttribute('href').split('?')[0] === '#/' + (parts[0] || '')));
+  // 기록을 불러오는 데 오래 걸리면 (느린 네트워크) 눌렀다는 표시를 먼저 보여 줌
+  const slow = setTimeout(() => { $app.innerHTML = '<p class="muted center loading">불러오는 중…</p>'; }, 300);
   try {
     if (!parts.length) await viewHome();
     else if (parts[0] === 'new') await viewNew(parts[1]);
@@ -490,6 +492,8 @@ async function route() {
   } catch (err) {
     console.error(err);
     $app.innerHTML = `<section class="card"><h2>오류</h2><p>${esc(err.message)}</p><p class="muted">${/permission/i.test(err.message) ? 'Firebase 콘솔 → Firestore → 규칙 탭에 저장소의 최신 firestore.rules 내용을 붙여넣고 게시했는지 확인해 주세요. 게시 후 1분쯤 뒤 새로고침하면 돼요.' : '잠시 후 새로고침해 주세요.'}</p></section>`;
+  } finally {
+    clearTimeout(slow);
   }
 }
 
@@ -512,6 +516,7 @@ async function main() {
     route();
   });
   window.addEventListener('hashchange', route);
+  prefetchGames();
 }
 
 if (typeof document !== 'undefined' && $app) main();
