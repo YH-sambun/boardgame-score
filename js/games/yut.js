@@ -5,8 +5,8 @@
 // session.data = { pieces:[[{ pos, line, steps:[{pos,line}] }]], turn, pending:[값], canThrow, sticks, catches:[], caught:[], winner, log }
 //  pos: 'H'(대기) | 'E'(완주) | 'O0'~'O19' | 'A1'.. | 'B1'.. | 'C', line: 'O' | 'A' | 'B'
 //  혼자 고르면 컴퓨터 1~3명과 함께 (settings.cpus, cpuLevel). 컴퓨터 차례는 자동으로 던지고 움직임
-import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES, wait } from './cpu.js?v=202611121154';
-import { chooseMove } from './yut-ai.js?v=202611121154';
+import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES, wait } from './cpu.js?v=202611121212';
+import { chooseMove } from './yut-ai.js?v=202611121212';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const NAMES = { '-1': '빽도', 1: '도', 2: '개', 3: '걸', 4: '윷', 5: '모' };
 const COLORS = ['#c0392b', '#2f6f9f', '#3d7a4a', '#c08a1e'];

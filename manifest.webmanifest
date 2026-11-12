@@ -1,6 +1,6 @@
 {
-  "name": "보드게임 점수판",
-  "short_name": "점수판",
+  "name": "보드게임",
+  "short_name": "보드게임",
   "description": "보드게임 점수 계산과 전적 기록",
   "lang": "ko",
   "start_url": "./",

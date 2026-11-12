@@ -1,9 +1,9 @@
-import { store } from './store.js?v=202611121154';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121154';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121154';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121154';
-import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121154';
-import { viewTools } from './tools.js?v=202611121154';
+import { store } from './store.js?v=202611121212';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121212';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121212';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121212';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121212';
+import { viewTools } from './tools.js?v=202611121212';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -123,6 +123,7 @@ function sessionRow(s) {
   return `<a class="srow" href="#/play/${s.id}">
     <div class="srow-head">${gameIcon(g, 'sm')}<b>${esc(g?.name || s.gameId)}</b>${g?.modes?.length > 1 ? `<span class="tag">${MODE_NAME[sessionMode(s)]}</span>` : ''} <span class="muted">${fmtDate(s.createdAt)}${s.settings?.startRound ? ` · ${s.settings.startRound}~${s.settings.endRound}R` : ''}</span>
       ${s.status === 'playing' ? '<span class="badge">진행 중</span>' : ''}
+      ${s.pending ? '<span class="badge pending" title="이 기기에만 있어요. 인터넷이 연결되면 자동으로 서버에 올라가요">서버 저장 대기</span>' : ''}
       ${s.shared ? `<span class="badge shared">공유받음${s.ownerName ? ' · ' + esc(s.ownerName) : ''}</span>` : ''}</div>
     <div class="srow-players">${order.map((o) => `<span class="${o.rank === 1 && done ? 'winner' : ''}">${esc(o.name)} ${totalText(g, o.total)}</span>`).join('')}</div>
   </a>`;
@@ -291,6 +292,46 @@ async function viewPlay(id) {
   $app.onclick = null; $app.onsubmit = null; $app.onchange = null;
 }
 
+// 기록 화면 맨 위: 이 기록이 서버(계정)에 저장돼 다른 기기에서도 보이는지 알려 줌
+let unSync = null;
+async function syncCardHtml() {
+  if (store.mode === 'local' && !store.guest) return '<div class="sync-card warn-card">이 브라우저에만 저장돼요 (서버 설정 없음).</div>';
+  if (store.guest) {
+    return `<div class="sync-card warn-card">
+      <b>게스트 기록은 이 기기에만 있어요.</b> 다른 기기에서 보려면 로그인하세요. 로그인하면 이 기기의 기록을 계정으로 옮겨 드려요.
+      <button class="btn primary small" id="sync-login">Google로 로그인</button></div>`;
+  }
+  const { sessions: n } = store.guestDataCount ? await store.guestDataCount() : { sessions: 0 };
+  const email = esc(store.user?.email || '');
+  return `${n ? `<div class="sync-card warn-card">
+      <b>이 기기에만 있는 게스트 기록 ${n}개</b>가 있어요. 계정으로 올리면 다른 기기에서도 보여요.
+      <button class="btn primary small" id="sync-import">계정으로 올리기</button></div>` : ''}
+    <div class="sync-card" id="sync-state"></div>
+    <p class="muted sync-note">${email ? `<b>${email}</b> 계정으로 로그인한 모든 기기에서 같은 기록이 보여요.` : ''} 다른 기기에서 기록이 안 보이면 같은 계정으로 로그인했는지 확인해 주세요.</p>`;
+}
+function bindSyncCard() {
+  const li = document.getElementById('sync-login');
+  if (li) li.onclick = () => store.signIn().catch((e) => toast(e.message));
+  const im = document.getElementById('sync-import');
+  if (im) im.onclick = async () => {
+    im.disabled = true; im.textContent = '올리는 중…';
+    try { const n = await store.importGuestData(); toast(`게임 ${n}개를 계정으로 옮겼어요`); viewHistory(); }
+    catch (e) { console.error(e); toast('옮기기 실패: ' + e.message); im.disabled = false; im.textContent = '다시 시도'; }
+  };
+  if (unSync) { unSync(); unSync = null; }
+  const el = document.getElementById('sync-state');
+  if (!el || !store.onSync) return;
+  let off = null;
+  const cb = ({ pending, ready }) => {
+    if (!el.isConnected) { off?.(); return; }
+    el.className = 'sync-card ' + (pending ? 'warn-card' : 'ok-card');
+    el.innerHTML = !ready ? '서버와 연결하는 중…'
+      : pending ? `<b>${pending}개 기록을 서버에 올리는 중이에요.</b> 인터넷이 연결되면 자동으로 올라가요. 올라가기 전에는 다른 기기에서 안 보여요.`
+        : '✓ 모든 기록이 서버에 저장됐어요.';
+  };
+  off = unSync = store.onSync(cb);
+}
+
 async function viewHistory() {
   const sessions = await store.listSessions();
   const filter = query().get('game') || '';
@@ -304,6 +345,11 @@ async function viewHistory() {
     </div>
     ${list.length ? list.map(sessionRow).join('') : '<p class="muted">기록이 없어요.</p>'}
   </section>`;
+  // 동기화 안내는 기록 목록 위에 따로 붙임 (게스트 기록 수를 세는 동안 목록을 먼저 보여 줌)
+  const sync = await syncCardHtml();
+  if (!location.hash.startsWith('#/history')) return;
+  $app.insertAdjacentHTML('afterbegin', sync);
+  bindSyncCard();
 }
 
 // 전적: 순위표 · 상대 전적 · 레이팅 · 업적
@@ -452,7 +498,7 @@ function viewNotFound() { $app.innerHTML = '<section class="card"><p>찾을 수 
 
 function viewLogin() {
   $app.innerHTML = `<section class="card center login">
-    <h2>보드게임 점수판</h2>
+    <h2>보드게임</h2>
     <button class="btn primary block" id="login">Google로 로그인</button>
     <p class="muted">어느 기기에서나 같은 기록을 보고, 가족과 기록을 공유할 수 있어요.</p>
     <button class="btn block" id="guest">로그인 없이 게스트로 시작</button>
@@ -467,7 +513,12 @@ async function offerGuestImport() {
   if (!store.importGuestData || store.mode !== 'firebase') return;
   const { sessions, players } = await store.guestDataCount();
   if (!sessions && !players) return;
-  if (!confirm(`이 기기에 게스트로 저장한 기록이 있어요 (게임 ${sessions}개, 참가자 ${players}명).\n로그인한 계정으로 옮길까요?`)) return;
+  if (await store.guestImportDeclined()) return; // 한 번 거절하면 매번 묻지 않음 (기록 화면에서 언제든 올릴 수 있음)
+  if (!confirm(`이 기기에 게스트로 저장한 기록이 있어요 (게임 ${sessions}개, 참가자 ${players}명).\n로그인한 계정으로 옮기면 다른 기기에서도 볼 수 있어요. 옮길까요?`)) {
+    await store.declineGuestImport();
+    toast('나중에 기록 화면에서 계정으로 올릴 수 있어요');
+    return;
+  }
   const n = await store.importGuestData();
   toast(`게임 ${n}개를 계정으로 옮겼어요`);
 }

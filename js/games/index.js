@@ -18,17 +18,17 @@ const YUT_ICON = '<svg class="gicon" viewBox="0 0 32 32" aria-hidden="true">'
   + '</svg>';
 
 export const GAME_META = [
-  { id: 'skullking', name: '스컬킹', icon: '🏴‍☠️', modes: ['record'], color: '#3b3f4a', load: () => import('./skullking.js?v=202611121154') },
-  { id: 'rummikub', name: '루미큐브', icon: RK_ICON, modes: ['record'], color: '#b8452f', load: () => import('./rummikub.js?v=202611121154') },
-  { id: 'yacht', name: '요트다이스', icon: '🎲', modes: ['record', 'play'], color: '#2f6f9f', load: () => import('./yacht.js?v=202611121154') },
-  { id: 'sparrow', name: '참새작', icon: '🐦', modes: ['record'], color: '#3d7a4a', load: () => import('./sparrow.js?v=202611121154') },
-  { id: 'celestia', name: '셀레스티아', icon: '🎈', modes: ['record'], color: '#4a78b5', load: () => import('./celestia.js?v=202611121154') },
-  { id: 'davinci', name: '다빈치 코드', icon: '🔢', modes: ['record'], color: '#2b2b2b', load: () => import('./davinci.js?v=202611121154') },
-  { id: 'clue', name: '클루', icon: '🔍', modes: ['record'], color: '#7a4b8c', load: () => import('./clue.js?v=202611121154') },
-  { id: 'chess', name: '체스', icon: '♟️', modes: ['play'], color: '#6b4f2a', tieIsNoWin: true, load: () => import('./chess.js?v=202611121154') },
-  { id: 'chessquiz', name: '체스 퀴즈', icon: '🧩', mark: '퀴', modes: ['play'], color: '#8a6d3b', load: () => import('./chessquiz.js?v=202611121154') },
-  { id: 'omok', name: '오목', icon: '⚫', modes: ['play'], color: '#a0743c', tieIsNoWin: true, load: () => import('./omok.js?v=202611121154') },
-  { id: 'yut', name: '윷놀이', icon: YUT_ICON, modes: ['play'], color: '#9c3d2b', load: () => import('./yut.js?v=202611121154') },
+  { id: 'skullking', name: '스컬킹', icon: '🏴‍☠️', modes: ['record'], color: '#3b3f4a', load: () => import('./skullking.js?v=202611121212') },
+  { id: 'rummikub', name: '루미큐브', icon: RK_ICON, modes: ['record'], color: '#b8452f', load: () => import('./rummikub.js?v=202611121212') },
+  { id: 'yacht', name: '요트다이스', icon: '🎲', modes: ['record', 'play'], color: '#2f6f9f', load: () => import('./yacht.js?v=202611121212') },
+  { id: 'sparrow', name: '참새작', icon: '🐦', modes: ['record'], color: '#3d7a4a', load: () => import('./sparrow.js?v=202611121212') },
+  { id: 'celestia', name: '셀레스티아', icon: '🎈', modes: ['record'], color: '#4a78b5', load: () => import('./celestia.js?v=202611121212') },
+  { id: 'davinci', name: '다빈치 코드', icon: '🔢', modes: ['record'], color: '#2b2b2b', load: () => import('./davinci.js?v=202611121212') },
+  { id: 'clue', name: '클루', icon: '🔍', modes: ['record'], color: '#7a4b8c', load: () => import('./clue.js?v=202611121212') },
+  { id: 'chess', name: '체스', icon: '♟️', modes: ['play'], color: '#6b4f2a', tieIsNoWin: true, load: () => import('./chess.js?v=202611121212') },
+  { id: 'chessquiz', name: '체스 퀴즈', icon: '🧩', mark: '퀴', modes: ['play'], color: '#8a6d3b', load: () => import('./chessquiz.js?v=202611121212') },
+  { id: 'omok', name: '오목', icon: '⚫', modes: ['play'], color: '#a0743c', tieIsNoWin: true, load: () => import('./omok.js?v=202611121212') },
+  { id: 'yut', name: '윷놀이', icon: YUT_ICON, modes: ['play'], color: '#9c3d2b', load: () => import('./yut.js?v=202611121212') },
 ];
 
 const loaded = new Map();

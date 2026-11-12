@@ -2,8 +2,8 @@
 //  렌주룰을 켜면 흑은 3·3, 4·4, 6목 이상(장목)이 금지 (흑이 다섯을 만드는 수는 예외로 허용).
 //  혼자 고르면 컴퓨터와 대국 (settings.cpuSide: 내 돌 흑/백, cpuLevel: 실력)
 // session.data = { moves:[칸 번호], winner:자리|null, draw:bool }
-import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES } from './cpu.js?v=202611121154';
-import { pickMove } from './omok-ai.js?v=202611121154';
+import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES } from './cpu.js?v=202611121212';
+import { pickMove } from './omok-ai.js?v=202611121212';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const N = 15;
 const DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];
