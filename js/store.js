@@ -1,5 +1,5 @@
 // 저장소: Firebase 설정이 있으면 Firestore, 없으면 localStorage
-import { firebaseConfig } from './firebase-config.js?v=202611121212';
+import { firebaseConfig } from './firebase-config.js?v=202611121216';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -40,7 +40,7 @@ function localStore() {
 // Firestore 구조
 //  users/{uid}/players, users/{uid}/meta : 내 계정 전용
 //  sessions/{id} : 게임 기록. ownerUid(만든 사람) + viewerEmails(참가자에 연결된 이메일)
-//  sessions/{id}/notes/{uid} : 그 게임에서 쓰는 내 개인 노트(클루 추리 노트). 본인만 읽기/쓰기
+//  users/{uid}/notes/{sessionId} : 그 게임에서 쓰는 내 개인 노트(클루 추리 노트). 본인만 읽기/쓰기
 //    → 참가자에 이메일을 연결하면 그 계정에서도 해당 게임을 보고 점수를 입력할 수 있음 (삭제는 만든 사람만)
 const normEmail = (e) => String(e || '').trim().toLowerCase();
 const viewerEmailsOf = (players) => [...new Set(players.map((p) => normEmail(p.email)).filter(Boolean))];
@@ -50,7 +50,10 @@ function firestoreStore() {
   const col = (name) => fs.collection(db, 'users', s.user.uid, name);
   const ref = (name, id) => fs.doc(db, 'users', s.user.uid, name, id);
   const sref = (id) => fs.doc(db, 'sessions', id);
-  const nref = (id) => fs.doc(db, 'sessions', id, 'notes', s.user.uid);
+  // 개인 노트는 users/{내 uid}/notes/{게임 id} 에 저장 (기존 '내 계정 전용' 규칙으로 본인만 접근)
+  const nref = (id) => fs.doc(db, 'users', s.user.uid, 'notes', id);
+  // 예전 위치 (sessions/{id}/notes/{uid}): 별도 규칙이 게시돼 있어야 해서 옮김. 읽기만 시도
+  const oldNref = (id) => fs.doc(db, 'sessions', id, 'notes', s.user.uid);
   // pending: 이 기기에서 바꿨지만 아직 서버에 올라가지 않은 기록 (오프라인 등) → 다른 기기에서는 아직 안 보임
   const withFlags = (d) => ({ id: d.id, ...d.data(), shared: d.data().ownerUid !== s.user.uid, pending: !!d.metadata?.hasPendingWrites });
   const ownSessions = async () => (await fs.getDocs(fs.query(fs.collection(db, 'sessions'), fs.where('ownerUid', '==', s.user.uid)))).docs;
@@ -186,10 +189,15 @@ function firestoreStore() {
     async updateSession(id, patch) { await fs.updateDoc(sref(id), patch); },
     async deleteSession(id) {
       await fs.deleteDoc(nref(id)).catch(() => {});
+      await fs.deleteDoc(oldNref(id)).catch(() => {});
       await fs.deleteDoc(sref(id));
     },
-    // 개인 노트: sessions/{id}/notes/{내 uid} — 규칙상 본인만 읽고 쓸 수 있음
-    async getNote(sid) { const d = await fs.getDoc(nref(sid)); return d.exists() ? d.data() : null; },
+    // 개인 노트: users/{내 uid}/notes/{게임 id} — 본인만 읽고 쓸 수 있음
+    async getNote(sid) {
+      const d = await fs.getDoc(nref(sid));
+      if (d.exists()) return d.data();
+      try { const o = await fs.getDoc(oldNref(sid)); return o.exists() ? o.data() : null; } catch { return null; }
+    },
     // 게임 문서 실시간 구독 (온라인 체스). 끊는 함수를 돌려줌
     watchSession(id, cb) {
       return fs.onSnapshot(sref(id), (d) => { if (d.exists()) cb(withFlags(d)); }, (e) => console.error('watch', e));

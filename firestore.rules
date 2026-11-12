@@ -22,7 +22,7 @@ service cloud.firestore {
         && (isOwner() || (isViewer() && request.resource.data.viewerEmails == resource.data.viewerEmails));
       allow delete: if signedIn() && isOwner();
 
-      // 개인 노트(클루 추리 노트): 본인 것만 읽고 쓸 수 있음. 쓰기는 그 게임을 볼 수 있는 계정만
+      // (예전) 개인 노트 위치. 지금은 users/{uid}/notes 에 저장하며, 여기는 예전 노트 읽기·삭제용
       match /notes/{noteUid} {
         function canSeeGame() {
           let g = get(/databases/$(database)/documents/sessions/$(id)).data;

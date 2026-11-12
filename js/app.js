@@ -1,9 +1,9 @@
-import { store } from './store.js?v=202611121212';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121212';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121212';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121212';
-import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121212';
-import { viewTools } from './tools.js?v=202611121212';
+import { store } from './store.js?v=202611121216';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121216';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121216';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121216';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121216';
+import { viewTools } from './tools.js?v=202611121216';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
