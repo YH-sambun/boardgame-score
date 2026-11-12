@@ -1,5 +1,5 @@
-import { store } from './store.js?v=202611120749';
-import { GAMES, getGame } from './games/index.js?v=202611120749';
+import { store } from './store.js?v=202611120753';
+import { GAMES, getGame } from './games/index.js?v=202611120753';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -287,12 +287,25 @@ async function viewPlayers() {
 function viewNotFound() { $app.innerHTML = '<section class="card"><p>찾을 수 없어요.</p><a href="#/">처음으로</a></section>'; }
 
 function viewLogin() {
-  $app.innerHTML = `<section class="card center">
-    <h2>로그인이 필요해요</h2>
-    <p class="muted">점수는 Firestore에 저장돼서 어느 기기에서나 볼 수 있어요.</p>
-    <button class="btn primary" id="login">Google로 로그인</button>
+  $app.innerHTML = `<section class="card center login">
+    <h2>보드게임 점수판</h2>
+    <button class="btn primary block" id="login">Google로 로그인</button>
+    <p class="muted">어느 기기에서나 같은 기록을 보고, 가족과 기록을 공유할 수 있어요.</p>
+    <button class="btn block" id="guest">로그인 없이 게스트로 시작</button>
+    <p class="muted">게스트 기록은 이 기기(브라우저)에만 저장돼요. 나중에 로그인하면 계정으로 옮길 수 있어요.</p>
   </section>`;
   document.getElementById('login').onclick = () => store.signIn().catch((e) => toast(e.message));
+  document.getElementById('guest').onclick = () => store.enterGuest();
+}
+
+// 로그인 직후, 이 기기에 게스트 기록이 있으면 계정으로 옮길지 물어봄
+async function offerGuestImport() {
+  if (!store.importGuestData || store.mode !== 'firebase') return;
+  const { sessions, players } = await store.guestDataCount();
+  if (!sessions && !players) return;
+  if (!confirm(`이 기기에 게스트로 저장한 기록이 있어요 (게임 ${sessions}개, 참가자 ${players}명).\n로그인한 계정으로 옮길까요?`)) return;
+  const n = await store.importGuestData();
+  toast(`게임 ${n}개를 계정으로 옮겼어요`);
 }
 
 // ───────── 라우터 ─────────
@@ -318,12 +331,20 @@ async function route() {
 
 async function main() {
   try { await store.init(); } catch (err) { $app.innerHTML = `<section class="card"><p>Firebase 초기화 실패: ${esc(err.message)}</p></section>`; return; }
-  store.onAuth((u) => {
-    $user.innerHTML = store.mode === 'local'
-      ? '<span class="muted" title="firebase-config.js를 채우면 Firestore에 저장됩니다">이 기기에만 저장</span>'
-      : u ? `<button class="btn ghost small" id="logout">${esc(u.displayName || u.email)} · 로그아웃</button>` : '';
+  let wasSignedIn = false;
+  store.onAuth(async (u) => {
+    $user.innerHTML = store.guest
+      ? `<span class="muted">게스트 · 이 기기에만 저장</span> <button class="btn ghost small" id="login2">로그인</button> <button class="btn ghost small" id="logout">나가기</button>`
+      : store.mode === 'local'
+        ? '<span class="muted" title="firebase-config.js를 채우면 Firestore에 저장됩니다">이 기기에만 저장</span>'
+        : u ? `<button class="btn ghost small" id="logout">${esc(u.displayName || u.email)} · 로그아웃</button>` : '';
     const lo = document.getElementById('logout');
     if (lo) lo.onclick = () => store.signOut();
+    const li = document.getElementById('login2');
+    if (li) li.onclick = () => store.signIn().catch((e) => toast(e.message));
+    const signedIn = store.mode === 'firebase' && !!u;
+    if (signedIn && !wasSignedIn) { try { await offerGuestImport(); } catch (e) { console.error(e); toast('기록 옮기기 실패: ' + e.message); } }
+    wasSignedIn = signedIn;
     route();
   });
   window.addEventListener('hashchange', route);

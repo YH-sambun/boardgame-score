@@ -189,3 +189,10 @@ main{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 .sp-pay:empty{display:none}
 .sp-rules{margin-top:12px}
 .sp-rules p{line-height:1.6}
+
+/* 로그인 / 게스트 */
+.login{max-width:420px;margin:40px auto}
+.login .btn.block{margin-top:12px}
+.login .muted{margin:6px 0 14px}
+#user{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.login h2{justify-content:center}
