@@ -151,3 +151,9 @@ tfoot td{font-size:16px;border-bottom:0}
 /* 홈 화면 앱(전체화면)일 때 노치/상태바 영역 확보 */
 header{padding-top:calc(12px + env(safe-area-inset-top))}
 main{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+
+/* 루미큐브: 승자 | 남은 합 | 점수 */
+.fields.rk-fields{grid-template-columns:64px 1fr 64px}
+.rk-win{font-size:20px}
+.key.rk-joker{grid-column:span 2;font-size:17px}
+@media (max-width:420px){.fields.rk-fields{grid-template-columns:56px 1fr 56px}.fields.rk-fields .rscore{grid-column:auto;padding-bottom:8px}}

@@ -1,5 +1,5 @@
-import { store } from './store.js?v=202611120735';
-import { GAMES, getGame } from './games/index.js?v=202611120735';
+import { store } from './store.js?v=202611120744';
+import { GAMES, getGame } from './games/index.js?v=202611120744';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -146,8 +146,12 @@ async function viewPlay(id) {
       save: () => { s.totals = g.computeTotals(s); persist(); },
       finish: async () => {
         s.totals = g.computeTotals(s);
-        const incomplete = (s.data.rounds || []).filter((r) => r.wins?.some((w) => w == null)).length;
-        const msg = incomplete ? `아직 입력이 덜 된 라운드가 ${incomplete}개 있어요. 그래도 종료하고 전적에 기록할까요?` : '게임을 종료하고 전적에 기록할까요?';
+        // 게임 모듈이 incompleteCount(session) 를 주면 그 값을 사용 (roundLabel: '판', '국' 등. 없으면 '빈 칸' 단위)
+        const incomplete = g.incompleteCount ? g.incompleteCount(s) : (s.data.rounds || []).filter((r) => r.wins?.some((w) => w == null)).length;
+        const unit = g.roundLabel || '라운드';
+        const josa = (unit.charCodeAt(unit.length - 1) - 0xac00) % 28 ? '이' : '가'; // 받침 있으면 '이'
+        const what = g.incompleteCount && !g.roundLabel ? '비어 있는 칸이' : `입력이 덜 된 ${unit}${josa}`;
+        const msg = incomplete ? `아직 ${what} ${incomplete}개 있어요. 그래도 종료하고 전적에 기록할까요?` : '게임을 종료하고 전적에 기록할까요?';
         if (!confirm(msg)) return;
         s.status = 'finished'; s.finishedAt = Date.now();
         await store.updateSession(s.id, { data: s.data, totals: s.totals, status: s.status, finishedAt: s.finishedAt, updatedAt: Date.now() });
