@@ -30,7 +30,7 @@
   - `viewerEmails` 에 든 계정은 읽기/점수 수정 가능, 삭제·공유대상 변경은 `ownerUid` 만
   - 스컬킹 `data`: `{ rounds:[{ bids:[], wins:[], bonus:[] }], current }`, `settings`: `{ startRound, endRound }`
   - 예전 위치(`users/{uid}/sessions`)의 기록은 로그인 시 자동으로 옮겨집니다.
-   - 루미큐브 `data`: `{ rounds:[{ winner, left:[] }], current }` (`winner`: 승자 자리 번호, `left`: 각자 남은 타일 합)
+  - 루미큐브 `data`: `{ rounds:[{ winner, left:[] }], current }` (`winner`: 승자 자리 번호, `left`: 각자 남은 타일 합)
   - 요트다이스 `data`: `{ scores:{ ones:[], twos:[], …, yacht:[] } }` (칸별로 참가자 순서 배열, 빈 칸은 null)
   - 참새작 `data`: `{ hands:[{ result:'win'|'draw'|null, winner, how:'ron'|'tsumo', from, sets:['shun'|'kou',…], dora, red, tanyao, chanta, yakuman, manual }], current }`
 
