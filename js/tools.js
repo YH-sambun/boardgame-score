@@ -37,17 +37,31 @@ export async function viewTools($app, { store, tab }) {
   stopAll();
   addEventListener('hashchange', stopAll, { once: true });
   const cur = TABS.some(([k]) => k === tab) ? tab : 'pick';
-  const players = await store.listPlayers().catch(() => []);
+  // 참가자 목록은 기다리지 않고 바로 화면을 그림 (느린 네트워크에서 멈춘 것처럼 보이지 않게)
+  const players = (cache.players || []).slice();
   $app.innerHTML = `<section class="card tools">
     <h2>도구</h2>
     <div class="seg">${TABS.map(([k, l]) => `<a class="${k === cur ? 'on' : ''}" href="#/tools/${k}">${l}</a>`).join('')}</div>
     <div id="tool"></div>
   </section>`;
   const root = $app.querySelector('#tool');
-  if (cur === 'pick') pickTool(root, players);
-  else if (cur === 'timer') timerTool(root, players);
-  else diceTool(root);
+  const show = () => {
+    if (cur === 'pick') pickTool(root, players);
+    else if (cur === 'timer') timerTool(root, players);
+    else diceTool(root);
+  };
+  show();
+  if (cur === 'dice') return;
+  store.listPlayers().then((ps) => {
+    cache.players = ps;
+    if (!root.isConnected || JSON.stringify(ps) === JSON.stringify(players)) return;
+    players.splice(0, players.length, ...ps);
+    // 손가락 뽑기 중에는 화면을 다시 그리지 않음 (명단 모드로 바꾸면 새 목록이 보임)
+    if (cur === 'pick' && st.pickMode === 'finger') return;
+    stopAll(); addEventListener('hashchange', stopAll, { once: true }); show();
+  }).catch(() => {});
 }
+const cache = {};
 
 // ───── 선 뽑기 ─────
 function pickTool(root, players) {
@@ -65,6 +79,7 @@ function pickTool(root, players) {
   };
   root.onclick = (e) => {
     const m = e.target.closest('[data-mode]');
+    if (m && m.dataset.mode === 'list' && !st.picked.length) st.picked = players.map((p) => p.id);
     if (m) { stopAll(); st.pickMode = m.dataset.mode; draw(); return; }
     const p = e.target.closest('[data-p]');
     if (p) { const id = p.dataset.p; st.picked = st.picked.includes(id) ? st.picked.filter((x) => x !== id) : [...st.picked, id]; draw(); return; }
