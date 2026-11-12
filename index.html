@@ -5,8 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1d2a3a">
   <title>보드게임 점수판</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
-  <link rel="stylesheet" href="css/style.css?v=202611120733">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="점수판">
+  <link rel="stylesheet" href="css/style.css?v=202611120746">
 </head>
 <body>
   <header>
@@ -20,6 +26,7 @@
     <a href="#/players">참가자</a>
   </nav>
   <main id="app"><p class="muted center">불러오는 중…</p></main>
-  <script type="module" src="js/app.js?v=202611120733"></script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
+  <script type="module" src="js/app.js?v=202611120746"></script>
 </body>
 </html>

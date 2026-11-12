@@ -83,7 +83,7 @@ tfoot td{font-size:16px;border-bottom:0}
 @media (max-width:420px){.fields{grid-template-columns:1fr 1fr 1fr;}.rscore{grid-column:1/-1;padding:0}}
 .player-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
 .player-row:first-of-type{border-top:0}
-.player-row b{flex:1}
+
 .stats-actions{display:flex;gap:8px;margin-top:14px}
 
 /* ───── 화면 크기별 구성 ─────
@@ -141,6 +141,41 @@ tfoot td{font-size:16px;border-bottom:0}
   .numpad-keys{grid-template-columns:repeat(auto-fill,minmax(54px,1fr))}
   .key{height:52px}
 }
+
+/* 공유·참가자 */
+.badge.shared{background:#3d6fb6}
+.player-row{flex-wrap:wrap}
+.player-row .pinfo{flex:1;min-width:160px}
+.player-row .email{margin-top:2px;word-break:break-all}
+
+/* 홈 화면 앱(전체화면)일 때 노치/상태바 영역 확보 */
+header{padding-top:calc(12px + env(safe-area-inset-top))}
+main{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+
+/* 루미큐브: 승자 | 남은 합 | 점수 */
+.fields.rk-fields{grid-template-columns:64px 1fr 64px}
+.rk-win{font-size:20px}
+.key.rk-joker{grid-column:span 2;font-size:17px}
+@media (max-width:420px){.fields.rk-fields{grid-template-columns:56px 1fr 56px}.fields.rk-fields .rscore{grid-column:auto;padding-bottom:8px}}
+
+/* 요트다이스 점수표 */
+.ytable th.cat{text-align:left;font-size:13px;color:var(--ink);font-weight:600;position:sticky;left:0;background:var(--card);z-index:1}
+.ytable td{padding:3px 4px}
+.ytable .turn{background:var(--hi)}
+.ytable thead th.turn{color:var(--accent);font-weight:800}
+.ytable tr.sub td,.ytable tr.sub th{background:var(--chip);font-size:13px}
+.ytable tr.sub td.turn{background:var(--hi)}
+.ytable tfoot th.cat{font-size:15px}
+.ycell{width:100%;min-width:48px;height:40px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer}
+.ycell.empty{color:var(--muted);font-weight:400}
+.ycell.zero{color:var(--muted)}
+.ycell.open{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.ycell:disabled{cursor:default}
+.ynext{font-size:14px}
+.yacht-card .round-nav{align-items:center}
+.key.zero{color:var(--muted)}
+@media (min-width:600px){.ycell{height:44px;min-width:64px;font-size:20px}.ytable th.cat{font-size:15px}}
+@media (min-width:1100px){.yacht-card{max-width:820px;margin:12px auto}}
 
 /* 참새작 */
 .sp-block{border-top:1px solid var(--line);padding:10px 0}

@@ -1,5 +1,5 @@
-import { store } from './store.js?v=202611120733';
-import { GAMES, getGame } from './games/index.js?v=202611120733';
+import { store } from './store.js?v=202611120746';
+import { GAMES, getGame } from './games/index.js?v=202611120746';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -47,7 +47,8 @@ function sessionRow(s) {
   const order = s.players.map((p, i) => ({ name: p.name, total: s.totals?.[i] ?? 0, rank: rk[i] })).sort((a, b) => a.rank - b.rank);
   return `<a class="srow" href="#/play/${s.id}">
     <div><b>${g?.emoji || ''} ${esc(g?.name || s.gameId)}</b> <span class="muted">${fmtDate(s.createdAt)}${s.settings?.startRound ? ` · ${s.settings.startRound}~${s.settings.endRound}R` : ''}</span>
-      ${s.status === 'playing' ? '<span class="badge">진행 중</span>' : ''}</div>
+      ${s.status === 'playing' ? '<span class="badge">진행 중</span>' : ''}
+      ${s.shared ? `<span class="badge shared">공유받음${s.ownerName ? ' · ' + esc(s.ownerName) : ''}</span>` : ''}</div>
     <div class="srow-players">${order.map((o) => `<span class="${o.rank === 1 && s.status === 'finished' ? 'winner' : ''}">${o.rank === 1 && s.status === 'finished' ? '👑' : ''}${esc(o.name)} ${o.total}</span>`).join('')}</div>
   </a>`;
 }
@@ -82,7 +83,7 @@ async function viewNew(gameId) {
       draw(); return;
     }
     if (e.target.id === 'start') {
-      const ps = selected.map((id) => players.find((p) => p.id === id)).map((p) => ({ id: p.id, name: p.name }));
+      const ps = selected.map((id) => players.find((p) => p.id === id)).map((p) => ({ id: p.id, name: p.name, email: p.email || null }));
       const now = Date.now();
       const s = { gameId: g.id, players: ps, playerIds: ps.map((p) => p.id), settings: { ...settings }, status: 'playing', createdAt: now, updatedAt: now };
       s.data = g.initData(ps, s.settings);
@@ -121,7 +122,7 @@ async function viewPlay(id) {
       <h2>${g.emoji} ${g.name} <span class="muted">${fmtDate(s.createdAt)}</span></h2>
       <div class="actions">
         ${s.status === 'finished' ? '<button class="btn ghost small" id="reopen">다시 수정</button>' : ''}
-        <button class="btn ghost small danger" id="del">삭제</button>
+        ${s.shared ? `<span class="badge shared">${esc(s.ownerName || '다른 계정')}님이 공유</span>` : '<button class="btn ghost small danger" id="del">삭제</button>'}
       </div>
     </div>
     <div id="result"></div><div id="board"></div>`;
@@ -145,8 +146,12 @@ async function viewPlay(id) {
       save: () => { s.totals = g.computeTotals(s); persist(); },
       finish: async () => {
         s.totals = g.computeTotals(s);
+        // 게임 모듈이 incompleteCount(session) 를 주면 그 값을 사용 (roundLabel: '판', '국' 등. 없으면 '빈 칸' 단위)
         const incomplete = g.incompleteCount ? g.incompleteCount(s) : (s.data.rounds || []).filter((r) => r.wins?.some((w) => w == null)).length;
-        const msg = incomplete ? `아직 입력이 덜 된 ${g.roundLabel || '라운드'} ${incomplete}개가 있어요. 그래도 종료하고 전적에 기록할까요?` : '게임을 종료하고 전적에 기록할까요?';
+        const unit = g.roundLabel || '라운드';
+        const josa = (unit.charCodeAt(unit.length - 1) - 0xac00) % 28 ? '이' : '가'; // 받침 있으면 '이'
+        const what = g.incompleteCount && !g.roundLabel ? '비어 있는 칸이' : `입력이 덜 된 ${unit}${josa}`;
+        const msg = incomplete ? `아직 ${what} ${incomplete}개 있어요. 그래도 종료하고 전적에 기록할까요?` : '게임을 종료하고 전적에 기록할까요?';
         if (!confirm(msg)) return;
         s.status = 'finished'; s.finishedAt = Date.now();
         await store.updateSession(s.id, { data: s.data, totals: s.totals, status: s.status, finishedAt: s.finishedAt, updatedAt: Date.now() });
@@ -157,7 +162,8 @@ async function viewPlay(id) {
   };
   render();
 
-  document.getElementById('del').onclick = async () => {
+  const del = document.getElementById('del');
+  if (del) del.onclick = async () => {
     if (!confirm('이 게임 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
     await store.deleteSession(s.id); location.hash = '#/';
   };
@@ -188,8 +194,10 @@ export function computeStats(sessions, gameId, { since = 0, activeIds = null } =
     if ((s.finishedAt || s.createdAt) < since) continue;
     const rk = ranks(s.totals);
     s.players.forEach((p, i) => {
-      if (activeIds && p.id && !activeIds.has(p.id)) return;
-      const key = p.id || p.name;
+      // 삭제한 참가자 제외는 내가 만든 게임에만 적용 (공유받은 게임은 참가자 id 체계가 다름)
+      if (!s.shared && activeIds && p.id && !activeIds.has(p.id)) return;
+      // 이메일이 연결된 참가자는 계정이 달라도 같은 사람으로 집계
+      const key = p.email ? 'e:' + p.email.toLowerCase() : (s.shared ? `x:${s.ownerUid}:${p.id || p.name}` : p.id || p.name);
       const st = map.get(key) || { name: p.name, played: 0, wins: 0, sum: 0, best: -Infinity, rankSum: 0 };
       st.name = p.name; st.played++; st.sum += s.totals[i]; st.rankSum += rk[i];
       st.best = Math.max(st.best, s.totals[i]);
@@ -236,18 +244,28 @@ async function viewPlayers() {
   $app.innerHTML = `<section class="card">
     <h2>참가자</h2>
     ${players.length ? players.map((p) => `<div class="player-row" data-id="${p.id}">
-        <b>${esc(p.name)}</b><span class="muted">${count(p.id)}판</span>
+        <div class="pinfo"><b>${esc(p.name)}</b> <span class="muted">${count(p.id)}판</span>
+          <div class="muted email">${p.email ? '📧 ' + esc(p.email) : '이메일 미연결'}</div></div>
+        <button class="btn ghost small" data-act="email">${p.email ? '이메일 변경' : '이메일 연결'}</button>
         <button class="btn ghost small" data-act="rename">이름 변경</button>
         <button class="btn ghost small danger" data-act="delete">삭제</button>
       </div>`).join('') : '<p class="muted">새 게임을 만들 때 참가자를 추가할 수 있어요.</p>'}
     <form class="inline" id="addp"><input name="n" placeholder="새 참가자 이름" maxlength="20" autocomplete="off"><button class="btn">추가</button></form>
     <p class="muted">이름을 바꾸면 지난 기록과 전적에도 새 이름으로 보여요. 삭제한 참가자는 목록과 전적에서 빠지고, 지난 게임 기록에는 이름이 그대로 남아요.</p>
+    ${store.mode === 'firebase' ? '<p class="muted">📧 참가자에 Google 계정 이메일을 연결하면, 그 사람이 자기 계정으로 로그인했을 때 함께 한 게임 기록과 전적을 볼 수 있고 점수도 같이 입력할 수 있어요. 이미 끝난 게임에도 바로 적용돼요.</p>' : ''}
   </section>`;
   $app.onclick = async (e) => {
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const p = players.find((x) => x.id === b.closest('[data-id]').dataset.id);
-    if (b.dataset.act === 'rename') {
+    if (b.dataset.act === 'email') {
+      const v = prompt(`${p.name}님의 Google 계정 이메일 (비우면 연결 해제)`, p.email || '');
+      if (v == null) return;
+      const email = v.trim().toLowerCase();
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('이메일 형식이 아니에요'); return; }
+      if (email && players.some((x) => x.id !== p.id && x.email === email)) { toast('다른 참가자에 이미 연결된 이메일이에요'); return; }
+      await store.setPlayerEmail(p.id, email); toast(email ? '연결했어요' : '연결을 해제했어요'); viewPlayers();
+    } else if (b.dataset.act === 'rename') {
       const name = (prompt('새 이름', p.name) || '').trim();
       if (!name || name === p.name) return;
       if (players.some((x) => x.name === name)) { toast('이미 있는 이름이에요'); return; }
