@@ -83,7 +83,7 @@ tfoot td{font-size:16px;border-bottom:0}
 @media (max-width:420px){.fields{grid-template-columns:1fr 1fr 1fr;}.rscore{grid-column:1/-1;padding:0}}
 .player-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
 .player-row:first-of-type{border-top:0}
-.player-row b{flex:1}
+
 .stats-actions{display:flex;gap:8px;margin-top:14px}
 
 /* ───── 화면 크기별 구성 ─────
@@ -141,3 +141,13 @@ tfoot td{font-size:16px;border-bottom:0}
   .numpad-keys{grid-template-columns:repeat(auto-fill,minmax(54px,1fr))}
   .key{height:52px}
 }
+
+/* 공유·참가자 */
+.badge.shared{background:#3d6fb6}
+.player-row{flex-wrap:wrap}
+.player-row .pinfo{flex:1;min-width:160px}
+.player-row .email{margin-top:2px;word-break:break-all}
+
+/* 홈 화면 앱(전체화면)일 때 노치/상태바 영역 확보 */
+header{padding-top:calc(12px + env(safe-area-inset-top))}
+main{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
