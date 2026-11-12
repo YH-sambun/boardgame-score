@@ -1,10 +1,10 @@
-import { store } from './store.js?v=202611121222';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121222';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121222';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121222';
-import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121222';
-import { viewTools } from './tools.js?v=202611121222';
-import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611121222';
+import { store } from './store.js?v=202611121408';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121408';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121408';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121408';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121408';
+import { viewTools } from './tools.js?v=202611121408';
+import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611121408';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -28,7 +28,7 @@ function stopWatching() { if (unwatch) { unwatch(); unwatch = null; } }
 
 const MODE_NAME = { record: '기록', play: '플레이' };
 // 기록하기/바로 하기 둘 다 되는 게임은 세션 설정의 mode 로 구분
-const sessionMode = (s) => { const g = getGame(s.gameId); return g?.modes?.length > 1 ? (s.settings?.mode || 'record') : g?.modes?.[0]; };
+const sessionMode = (s) => { const g = getGame(s.gameId); return g?.modes?.length > 1 ? (s.settings?.mode || g.modes[0]) : g?.modes?.[0]; };
 
 // ───────── 화면들 ─────────
 const MODES = [
@@ -151,6 +151,7 @@ async function viewNew(gameId) {
   const g = await loadGame(gameId);
   if (!g) return viewNotFound();
   const mode = g.modes.length > 1 ? (g.modes.includes(query().get('mode')) ? query().get('mode') : g.modes[0]) : g.modes[0];
+  const minP = g.minPlayersFor ? g.minPlayersFor(mode) : g.minPlayers; // 모드마다 최소 인원이 다른 게임 (체스 기록하기는 2명)
   let players = await store.listPlayers();
   const selected = [];
   const settings = Object.fromEntries(g.settingsFields.map((f) => [f.key, f.default]));
@@ -168,14 +169,14 @@ async function viewNew(gameId) {
     $app.innerHTML = `
       <section class="card">
         <h2>${gameIcon(g, 'sm')} ${g.name}${g.modes.length > 1 ? ` <span class="tag">${MODE_NAME[mode]}</span>` : ''} 새 게임 ${tipBtn()}</h2>
-        ${tipBody(`<p>${g.pickHint ? esc(g.pickHint) : `참가자를 순서대로 눌러 주세요 (${g.minPlayers}~${g.maxPlayers}명). 누른 순서가 자리 순서가 됩니다.`}</p><a href="#/help/${g.id}">${g.name} 룰과 팁 보기</a>`)}
-        <p class="pick-count muted">참가자 ${g.minPlayers}~${g.maxPlayers}명 · 누른 순서가 자리 순서</p>
+        ${tipBody(`<p>${g.pickHint ? esc(g.pickHint) : `참가자를 순서대로 눌러 주세요 (${minP}~${g.maxPlayers}명). 누른 순서가 자리 순서가 됩니다.`}</p><a href="#/help/${g.id}">${g.name} 룰과 팁 보기</a>`)}
+        <p class="pick-count muted">참가자 ${minP === g.maxPlayers ? minP : `${minP}~${g.maxPlayers}`}명 · 누른 순서가 자리 순서</p>
         <div class="chips">
           ${players.map((p) => { const i = selected.indexOf(p.id); return `<button class="chip ${i >= 0 ? 'on' : ''}" data-pick="${p.id}">${i >= 0 ? `<i>${i + 1}</i>` : ''}${esc(p.name)}</button>`; }).join('')}
         </div>
         <form class="inline" id="addp"><input name="n" placeholder="새 참가자 이름" maxlength="20" autocomplete="off"><button class="btn">추가</button></form>
         ${g.settingsFields.filter((f) => !f.show || f.show({ count: selected.length, settings, mode })).map(fieldHtml).join('')}
-        <button class="btn primary block" id="start" ${selected.length < g.minPlayers ? 'disabled' : ''}>게임 시작 (${selected.length}명)</button>
+        <button class="btn primary block" id="start" ${selected.length < minP ? 'disabled' : ''}>게임 시작 (${selected.length}명)</button>
       </section>`;
   };
   draw();
