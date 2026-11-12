@@ -1,7 +1,7 @@
 // 업적: 완료된 게임 기록으로 자동 계산 (따로 저장하지 않음)
 //  각 업적의 test(entries) 는 그 사람의 참가 기록(오래된 순)을 받아, 달성한 시각(ms) 또는 null 을 돌려줌
 //  entry = { s: 세션, i: 그 사람 자리, rank, n: 인원, win, draw, t: 끝난 시각 }
-import { rankedSessions, seats } from './stats.js?v=202611121017';
+import { rankedSessions, seats } from './stats.js?v=202611121111';
 
 const sum = (xs) => xs.reduce((a, b) => a + (b || 0), 0);
 const wins = (es) => es.filter((e) => e.win && e.n >= 2);
@@ -29,7 +29,7 @@ export const ACHIEVEMENTS = [
   { id: 'yc-bonus', game: 'yacht', mark: '+', name: '보너스 수집가', desc: '상단 보너스(63점) 달성', test: (es) => nth(of('yacht')(es), 1, (e) => sum(['ones', 'twos', 'threes', 'fours', 'fives', 'sixes'].map((k) => e.s.data.scores?.[k]?.[e.i])) >= 63) },
   { id: 'yc-250', game: 'yacht', mark: '250', name: '250점 클럽', desc: '요트다이스 총점 250점 이상', test: (es) => nth(of('yacht')(es), 1, (e) => e.s.totals[e.i] >= 250) },
   // 참새작
-  { id: 'sp-yakuman', game: 'sparrow', mark: '役', name: '역만', desc: '역만으로 화료', test: (es) => nth(of('sparrow')(es), 1, (e) => (e.s.data.hands || []).some((h) => h.result === 'win' && h.winner === e.i && h.yakuman)) },
+  { id: 'sp-yakuman', game: 'sparrow', mark: '역', name: '역만', desc: '역만으로 화료', test: (es) => nth(of('sparrow')(es), 1, (e) => (e.s.data.hands || []).some((h) => h.result === 'win' && h.winner === e.i && h.yakuman)) },
   // 셀레스티아
   { id: 'ce-big', game: 'celestia', mark: '보', name: '보물 사냥꾼', desc: '한 항해에서 15점 이상 획득', test: (es) => nth(of('celestia')(es), 1, (e) => (e.s.data.voyages || []).some((v) => (v.gains?.[e.i] || 0) >= 15)) },
   { id: 'ce-last', game: 'celestia', mark: '끝', name: '끝까지 간 사람', desc: '한 항해에서 혼자 끝까지 남아 점수 획득', test: (es) => nth(of('celestia')(es), 1, (e) => (e.s.data.voyages || []).some((v) => v.last === e.i && (v.gains?.[e.i] || 0) > 0)) },
@@ -37,12 +37,12 @@ export const ACHIEVEMENTS = [
   { id: 'dv-triple', game: 'davinci', mark: '3', name: '해독가', desc: '한 게임에서 세 판 연속 마지막까지 생존', test: (es) => nth(of('davinci')(es), 1, (e) => { let c = 0; for (const r of e.s.data.rounds || []) { c = r.winner === e.i ? c + 1 : 0; if (c >= 3) return true; } return false; }) },
   { id: 'dv-guess', game: 'davinci', mark: '!', name: '연속 적중', desc: '한 차례에 연속 3번 맞히기 (판 기록에서 체크)', test: (es) => nth(of('davinci')(es), 1, (e) => (e.s.data.rounds || []).some((r) => r.streak3?.includes(e.i))) },
   // 체스
-  { id: 'ch-cpu', game: 'chess', mark: '機', name: '기계를 넘어', desc: '컴퓨터 "어려움" 이상을 이기기', test: (es) => nth(of('chess')(es), 1, (e) => e.s.data.mode === 'ai' && e.s.data.level >= 3 && e.s.data.result?.winner === e.i) },
+  { id: 'ch-cpu', game: 'chess', mark: '기', name: '기계를 넘어', desc: '컴퓨터 "어려움" 이상을 이기기', test: (es) => nth(of('chess')(es), 1, (e) => e.s.data.mode === 'ai' && e.s.data.level >= 3 && e.s.data.result?.winner === e.i) },
   { id: 'ch-win10', game: 'chess', mark: '10', name: '체스 10승', desc: '체스 10번 이기기', test: (es) => nth(of('chess')(es), 10, (e) => e.s.data.result?.winner === e.i) },
   // 오목
-  { id: 'om-fast', game: 'omok', mark: '速', name: '속공', desc: '15수 안에 오목 완성', test: (es) => nth(of('omok')(es), 1, (e) => e.s.data.winner === e.i && Math.ceil((e.s.data.moves || []).length / 2) <= 15) },
+  { id: 'om-fast', game: 'omok', mark: '속', name: '속공', desc: '15수 안에 오목 완성', test: (es) => nth(of('omok')(es), 1, (e) => e.s.data.winner === e.i && Math.ceil((e.s.data.moves || []).length / 2) <= 15) },
   // 윷놀이
-  { id: 'yt-clean', game: 'yut', mark: '無', name: '무사귀환', desc: '한 번도 안 잡히고 승리', test: (es) => nth(of('yut')(es), 1, (e) => e.win && !(e.s.data.caught?.[e.i])) },
+  { id: 'yt-clean', game: 'yut', mark: '무', name: '무사귀환', desc: '한 번도 안 잡히고 승리', test: (es) => nth(of('yut')(es), 1, (e) => e.win && !(e.s.data.caught?.[e.i])) },
   { id: 'yt-hunter', game: 'yut', mark: '잡', name: '사냥꾼', desc: '한 게임에서 상대 말 3번 잡기', test: (es) => nth(of('yut')(es), 1, (e) => (e.s.data.catches?.[e.i] || 0) >= 3) },
 ];
 

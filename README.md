@@ -1,6 +1,13 @@
 # 🎲 보드게임 점수판
 
-가족 보드게임 점수 계산 + 전적 누적 웹앱. 지금은 **스컬킹**, **루미큐브**, **요트다이스**, **참새작**, **클루**(추리 노트), **체스**(직접 대국), **체스 퀴즈**가 들어 있고, 다른 게임은 `js/games/` 에 모듈을 추가하면 됩니다.
+가족 보드게임 점수 계산 + 전적 누적 웹앱. 홈 화면은 두 구역으로 나뉩니다.
+
+- **기록하기**(실물로 하고 점수만 입력): 스컬킹, 루미큐브, 요트다이스, 참새작, 셀레스티아, 다빈치 코드(+추리 도우미), 클루(추리 노트)
+- **바로 하기**(화면에서 직접 플레이): 요트다이스, 체스, 체스 퀴즈, 오목, 윷놀이
+- **도구**: 선 뽑기(손가락·명단 룰렛), 타이머(모래시계·턴 시계), 주사위·코인·셀레스티아 위험 주사위
+- **전적**: 순위표, 상대 전적, 레이팅(Elo), 업적
+
+ 다른 게임은 `js/games/` 에 모듈을 추가하면 됩니다.
 
 - 빌드 도구 없음 (순수 HTML/JS) → GitHub Pages에 그대로 올리면 동작
 - `js/firebase-config.js` 가 비어 있으면 **이 기기(localStorage)에만 저장**, 채우면 **Firestore** 에 저장되어 모든 기기에서 공유
@@ -36,15 +43,23 @@
   - 요트다이스 `data`: `{ scores:{ ones:[], twos:[], …, yacht:[] } }` (칸별로 참가자 순서 배열, 빈 칸은 null)
   - 체스 `data`: `{ mode:'local'|'online'|'ai', white, moves:[uci], result:{ winner, reason }, level, seats:{ 자리: uid }, drawOffer, started, seq }`
   - 체스 퀴즈 `data`: `{ level(1~10, 0=직접), types:[종류], started, cur, problems:[{ type, grade, pts, limit, noHint, oneShot, fen, color, first, player, moves:[uci], status, hint, mistakes, points }] }`
+  - 요트다이스 플레이 모드: `settings.mode:'play'`, `data.play:{ dice:[5], held:[5], rolls }` 추가
+  - 셀레스티아 `data`: `{ voyages:[{ gains:[], last }], current }`, `settings`: `{ target }`
+  - 다빈치 코드 `data`: `{ rounds:[{ order:[탈락 순서 자리], winner, streak3:[] }], current }`, 개인 노트 `{ me, joker, rows:{ [자리|'me']: [{ c:'b'|'w', v, not:[] }] }, memo }`
+  - 오목 `data`: `{ moves:[칸 번호], winner, draw }`, `settings`: `{ renju }`
+  - 윷놀이 `data`: `{ pieces:[[{ pos, line, steps }]], turn, pending:[], canThrow, sticks, catches:[], caught:[], winner, log }`, `settings`: `{ pieces, backdo }`
   - 참새작 `data`: `{ hands:[{ result:'win'|'draw'|null, winner, how:'ron'|'tsumo', from, sets:['shun'|'kou',…], dora, red, tanyao, chanta, yakuman, manual }], current }`
 
-전적(1등 횟수, 승률, 평균 점수, 최고 점수, 평균 등수)은 완료된 `sessions` 로부터 계산합니다.
+전적(1등 횟수, 승률, 평균 점수, 최고 점수, 평균 등수), 상대 전적, 레이팅, 업적은 모두 완료된 `sessions` 로부터 계산하고 따로 저장하지 않습니다 (`js/stats.js`, `js/achievements.js`).
 
 ## 배포할 때
 `./bump-version.sh` 를 실행하면 파일 버전 번호가 바뀌어 브라우저가 옛 파일을 쓰지 않습니다.
 
 ## 새 게임 추가하기
-`js/games/skullking.js` 를 참고해 `{ id, name, emoji, minPlayers, maxPlayers, settingsFields, initData, computeTotals, renderPlay }` 를 내보내는 모듈을 만들고 `js/games/index.js` 의 `GAMES` 에 추가하세요.
+`js/games/skullking.js` 를 참고해 `{ id, name, minPlayers, maxPlayers, settingsFields, initData, computeTotals, renderPlay }` 를 내보내는 모듈을 만들고 `js/games/index.js` 의 `GAME_META` 에 한 줄 추가하세요 (`modes`, `color`). 게임 파일은 그 게임을 열 때만 불러옵니다.
+
+## 게임 그림 넣기
+`img/games/` 폴더에 그림(정사각형, WebP나 PNG 권장, 256px 정도)을 넣고 `js/games/index.js` 의 해당 게임 줄에 `img: '파일이름.webp'` 를 추가하면, 글자 아이콘 대신 그 그림이 홈·기록·도움말에 나옵니다.
 
 ## 스컬킹 점수 규칙 (공식 룰북 기준)
 | 상황 | 점수 |

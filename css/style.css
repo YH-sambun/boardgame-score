@@ -403,3 +403,51 @@ table.h2h td.self{background:var(--chip)}
 .dv-panel{margin-top:10px;padding:10px;border-radius:12px;background:var(--hi)}
 .dv-panel .row-btns{flex-wrap:wrap}.dv-panel .row-btns .btn{flex:1 1 30%}
 .key.no{background:var(--neg);border-color:var(--neg)}
+/* 오목 */
+.omok-board{display:grid;grid-template-columns:repeat(15,1fr);width:100%;max-width:min(560px,calc(100vh - 240px));min-width:260px;margin:6px auto;aspect-ratio:1;background:#e2b86b;border-radius:6px;padding:1.5%;box-sizing:border-box}
+.pt{position:relative;border:0;padding:0;background:transparent;aspect-ratio:1;cursor:pointer}
+.pt::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid #6b4a1c}
+.pt::after{content:"";position:absolute;top:0;bottom:0;left:50%;border-left:1px solid #6b4a1c}
+.pt.l::before{left:50%}.pt.r::before{right:50%}.pt.t::after{top:50%}.pt.b::after{bottom:50%}
+.pt.star{background:radial-gradient(circle,#6b4a1c 0 9%,transparent 11%)}
+.pt:disabled{cursor:default}
+.pt:not(:disabled):hover{background:radial-gradient(circle,rgba(0,0,0,.18) 0 34%,transparent 36%)}
+.stone{display:inline-block;width:1em;height:1em;border-radius:50%;vertical-align:-.15em;margin-right:4px}
+.pt .stone{position:absolute;inset:6%;width:auto;height:auto;margin:0;z-index:1}
+.stone.s1{background:radial-gradient(circle at 35% 30%,#555,#111 60%)}
+.stone.s2{background:radial-gradient(circle at 35% 30%,#fff,#d6d6d6 70%);box-shadow:0 0 0 1px #999 inset}
+.stone.last::after{content:"";position:absolute;inset:36%;border-radius:50%;background:#d33}
+.omok-players{display:flex;justify-content:space-around;font-weight:700}
+.omok-players span{padding:4px 10px;border-radius:8px}
+.omok-players span.turn{background:var(--hi)}
+/* 윷놀이 */
+.yut-players{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px}
+.yp{display:grid;grid-template-columns:auto 1fr;gap:0 8px;align-items:center;padding:6px 10px;border-radius:10px;border:1px solid var(--line)}
+.yp i{grid-row:span 2;width:16px;height:16px;border-radius:50%}
+.yp small{color:var(--muted)}
+.yp.turn{background:var(--hi);border-color:var(--accent)}
+.yp.win b{color:var(--accent)}
+.yut-wrap{display:grid;gap:12px}
+@media (min-width:700px){.yut-wrap{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:start}}
+.yut-board{width:100%;max-width:520px;margin:0 auto;display:block;background:#efe3c8;border-radius:12px}
+.yut-board line{stroke:#8a6d3b;stroke-width:1}
+.yut-board .spot{fill:#fbf6ea;stroke:#8a6d3b;stroke-width:1}
+.yut-board .spot.big{fill:#e8d4a8;stroke-width:1.4}
+.yut-board .start{font-size:5px;fill:#8a6d3b;text-anchor:middle}
+.yut-board .pc circle{stroke:#fff;stroke-width:1.2}
+.yut-board .pc text{fill:#fff;font-size:6px;font-weight:800;text-anchor:middle}
+.yut-board .pc.can{cursor:pointer}
+.yut-board .pc.can circle{stroke:#ffd84d;stroke-width:2}
+.sticks{display:flex;justify-content:center;gap:10px;min-height:96px;align-items:center}
+.stick{width:24px;height:92px}
+.stick rect{fill:#a0743c;stroke:#6b4a1c;stroke-width:2}
+.stick.flat rect{fill:#f3e3c1}
+.yut-pending{justify-content:center}
+.ytray{margin:6px 0 10px;padding:6px 0 2px;border-radius:12px;background:var(--hi)}
+.ycell.preview{color:var(--accent);font-weight:600;border-style:dashed;border-color:var(--accent)}
+.die{width:min(58px,14.5vw);height:min(58px,14.5vw)}
+.die.cel{height:58px}
+.dice-tray{gap:min(10px,2vw)}
+.ycell.preview{color:var(--muted);border-color:var(--muted)}
+.round-nav .btn{white-space:nowrap}
+.game-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}

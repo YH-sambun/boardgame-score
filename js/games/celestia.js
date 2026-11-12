@@ -64,7 +64,7 @@ export default {
         <section class="card input-card">
           <div class="round-head">
             <h2>${vi + 1}번째 항해</h2>
-            ${over ? `<span class="warn">목표 ${target}점을 넘은 사람이 있어요. 이번 항해가 끝나면 게임 종료</span>` : `<span class="muted">목표 ${target}점</span>`}
+            ${over && !readonly ? `<span class="warn">목표 ${target}점을 넘은 사람이 있어요. 이번 항해가 끝나면 게임 종료</span>` : `<span class="muted">목표 ${target}점</span>`}
           </div>
           ${players.map((p, pi) => `<div class="prow cel-row">
               <div class="pname">${esc(p.name)}<span class="ptotal">${totals[pi]}점</span></div>

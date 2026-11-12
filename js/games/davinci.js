@@ -178,7 +178,7 @@ export default {
           ${st ? `<div class="dv-panel">
             <div class="chips"><button class="chip ${tapMode === 'reveal' ? 'on' : ''}" data-tm="reveal">${sel.row === 'me' ? '숫자' : '공개된 숫자'}</button>${sel.row === 'me' ? '' : `<button class="chip ${tapMode === 'not' ? 'on' : ''}" data-tm="not">틀린 추측(아님)</button>`}</div>
             <div class="numpad-keys">${[...NUMS, ...(note.joker ? ['J'] : [])].map((v) => `<button class="key ${tapMode === 'reveal' ? (st.v === v ? 'on' : '') : ((st.not || []).includes(v) ? 'on no' : '')}" data-num="${v}">${v === 'J' ? '─' : v}</button>`).join('')}</div>
-            <div class="row-btns"><button class="btn small" data-mv="-1">왼쪽으로</button><button class="btn small" data-mv="1">오른쪽으로</button><button class="btn small" data-ins="b">왼쪽에 흑 끼우기</button><button class="btn small" data-ins="w">왼쪽에 백 끼우기</button><button class="btn small" data-flip>흑/백 바꾸기</button><button class="btn small danger" data-deltile>삭제</button></div>
+            <div class="row-btns"><button class="btn small" data-mv="-1">왼쪽으로</button><button class="btn small" data-mv="1">오른쪽으로</button><button class="btn small" data-ins="b">앞에 흑 넣기</button><button class="btn small" data-ins="w">앞에 백 넣기</button><button class="btn small" data-flip>흑/백 바꾸기</button><button class="btn small danger" data-deltile>삭제</button></div>
           </div>` : '<p class="muted">타일을 누르면 숫자 입력, 틀린 추측 표시, 위치 이동을 할 수 있어요. 숨은 타일 아래 작은 글씨가 가능한 숫자예요.</p>'}`}
         <label class="clue-memo">메모<textarea data-memo rows="2">${esc(note.memo || '')}</textarea></label>
         <p class="muted">${ctx.note.private ? '이 노트는 내 계정에만 저장되고 다른 사람에게는 보이지 않아요.' : '이 노트는 이 기기에만 저장돼요.'}</p>

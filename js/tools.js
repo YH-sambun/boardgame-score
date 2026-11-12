@@ -116,7 +116,7 @@ function finger(pad) {
     if (done) return;
     const color = COLORS.find((c) => !used.has(c)) || COLORS[rand(COLORS.length)];
     used.add(color);
-    const el = document.createElement('span'); el.className = 'finger'; el.style.background = color;
+    const el = document.createElement('span'); el.className = 'finger'; el.style.background = color; el.style.color = color;
     pad.appendChild(el);
     const t = { ...pos(e), color, el };
     place(t); touches.set(e.pointerId, t);

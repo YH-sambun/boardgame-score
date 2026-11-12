@@ -1,8 +1,8 @@
-import { store } from './store.js?v=202611121017';
-import { GAMES, getGame, loadGame, loadGames, gameIcon } from './games/index.js?v=202611121017';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121017';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121017';
-import { viewTools } from './tools.js?v=202611121017';
+import { store } from './store.js?v=202611121111';
+import { GAMES, getGame, loadGame, loadGames, gameIcon } from './games/index.js?v=202611121111';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121111';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121111';
+import { viewTools } from './tools.js?v=202611121111';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -370,7 +370,7 @@ async function viewStats() {
     ${people.length ? people.map((p) => {
       const got = visible.filter((x) => p.earned.has(x.id));
       return `<div class="badge-person"><div class="bp-head"><b>${esc(p.name)}</b><span class="muted">${got.length}/${visible.length}</span></div>
-        <div class="badge-row">${visible.map((x) => { const t = p.earned.get(x.id); return `<span class="medal-chip ${t ? 'got' : ''}" title="${esc(x.desc)}${t ? ' · ' + fmtDay(t) : ''}"><span class="medal">${esc(x.mark)}</span>${esc(x.name)}</span>`; }).join('')}</div></div>`;
+        <div class="badge-row">${got.map((x) => `<span class="medal-chip got" title="${esc(x.desc)} · ${fmtDay(p.earned.get(x.id))}"><span class="medal">${esc(x.mark)}</span>${esc(x.name)}</span>`).join('') || '<span class="muted">아직 없어요</span>'}</div></div>`;
     }).join('') : '<p class="muted">완료된 게임이 생기면 여기 쌓여요.</p>'}
     <h3 class="sub-h">업적 목록</h3>
     <ul class="badge-list">${visible.map((x) => `<li><span class="medal">${esc(x.mark)}</span><div><b>${esc(x.name)}</b>${x.game ? ` <span class="tag">${esc(getGame(x.game)?.name)}</span>` : ''}<small class="muted">${esc(x.desc)}</small></div></li>`).join('')}</ul>`;
