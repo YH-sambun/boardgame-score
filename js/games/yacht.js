@@ -9,6 +9,8 @@
 //   - 요트(Yacht): 5개 모두 같으면 50
 //  조건을 못 맞춘 칸에 기록하면 0점. 매 차례 반드시 한 칸을 채워야 하며, 12번 차례면 끝.
 
+import { dieFace } from '../tools.js?v=202611121111';
+
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const uniqSorted = (xs) => [...new Set(xs)].sort((a, b) => a - b);
 const dice = range(1, 6);
@@ -27,6 +29,25 @@ const UPPER = CATEGORIES.filter((c) => c.upper);
 const LOWER = CATEGORIES.filter((c) => !c.upper);
 export const BONUS_LINE = 63;
 export const BONUS = 35;
+
+// 주사위 5개로 각 칸에 들어갈 점수 (직접 플레이 모드)
+export function scoreFor(key, dice) {
+  const cnt = [0, 0, 0, 0, 0, 0, 0];
+  dice.forEach((v) => { cnt[v]++; });
+  const sum = dice.reduce((a, b) => a + b, 0);
+  const has = (...xs) => xs.every((x) => cnt[x] > 0);
+  const c = CATEGORIES.find((x) => x.key === key);
+  if (c.upper) return cnt[c.face] * c.face;
+  switch (key) {
+    case 'choice': return sum;
+    case 'fourKind': return cnt.some((x) => x >= 4) ? sum : 0;
+    case 'fullHouse': return cnt.includes(3) && cnt.includes(2) ? sum : 0;
+    case 'smallStraight': return has(1, 2, 3, 4) || has(2, 3, 4, 5) || has(3, 4, 5, 6) ? 15 : 0;
+    case 'largeStraight': return has(1, 2, 3, 4, 5) || has(2, 3, 4, 5, 6) ? 30 : 0;
+    case 'yacht': return cnt.includes(5) ? 50 : 0;
+    default: return 0;
+  }
+}
 
 const val = (session, key, pi) => session.data.scores[key]?.[pi];
 const filled = (v) => v != null;
@@ -51,12 +72,13 @@ export default {
   emoji: '🎲',
   // 소개·도움말 (직접 정리한 요약)
   guide: {
-    players: '2명 이상', time: '20~30분',
+    players: '1명 이상 (플레이 모드는 혼자도 가능)', time: '20~30분',
     intro: '주사위 5개를 최대 세 번 굴려 족보를 만들고, 12칸짜리 점수표를 하나씩 채우는 주사위 게임이에요. 12칸을 모두 채웠을 때 합계가 높은 사람이 이겨요.',
     rules: [
       '내 차례에 주사위 5개를 굴려요. 마음에 드는 주사위는 남기고 나머지를 다시 굴릴 수 있어요(한 차례 최대 3번).',
       '굴리기가 끝나면 점수표에서 아직 비어 있는 칸 하나를 반드시 골라 기록해요. 조건이 안 맞으면 그 칸은 0점이에요.',
       '한 번 기록한 칸은 바꿀 수 없어요. 모두 12번씩 차례를 돌면 끝이에요.',
+      '플레이 모드에서는 앱 주사위를 굴리고, 주사위를 눌러 남긴 뒤 다시 굴려요. 표의 흐린 숫자가 지금 주사위로 받을 점수이고, 누르면 바로 기록돼요.',
     ],
     scoring: [
       '1~6: 그 눈이 나온 주사위의 합 (예: 4가 3개면 12).',
@@ -75,7 +97,7 @@ export default {
       '스트레이트를 노릴 땐 3·4가 핵심이에요. 가운데 숫자를 남기고 굴려 보세요.',
     ],
   },
-  minPlayers: 2,
+  minPlayers: 1,
   maxPlayers: 8,
   settingsFields: [],
 
@@ -94,7 +116,11 @@ export default {
     const players = session.players;
     const d = session.data;
     const readonly = session.status === 'finished';
+    const playMode = session.settings?.mode === 'play';
+    if (playMode && !d.play) d.play = { dice: [null, null, null, null, null], held: [false, false, false, false, false], rolls: 0 };
+    const P = d.play;
     let open = null; // { key, pi }
+    let rolling = false;
 
     const draw = () => {
       const t = computeTotals(session);
@@ -103,11 +129,22 @@ export default {
       const turn = minDone >= CATEGORIES.length ? -1 : t.findIndex((x) => x.done === minDone);
       const allDone = turn === -1;
 
+      const rolled = playMode && P.rolls > 0 && !rolling;
       const cell = (c, pi) => {
         const v = val(session, c.key, pi);
         const isOpen = open && open.key === c.key && open.pi === pi;
+        if (playMode) {
+          const can = !readonly && rolled && pi === turn && !filled(v);
+          const preview = can ? scoreFor(c.key, P.dice) : null;
+          return `<td class="${pi === turn ? 'turn' : ''}"><button class="ycell ${filled(v) ? '' : 'empty'} ${v === 0 ? 'zero' : ''} ${can ? 'preview' : ''}" data-pick="${c.key}" ${can ? '' : 'disabled'}>${filled(v) ? v : can ? preview : '·'}</button></td>`;
+        }
         return `<td class="${pi === turn ? 'turn' : ''}"><button class="ycell ${isOpen ? 'open' : ''} ${filled(v) ? '' : 'empty'} ${v === 0 ? 'zero' : ''}" data-cell="${c.key}" data-p="${pi}" ${readonly ? 'disabled' : ''}>${filled(v) ? v : '·'}</button></td>`;
       };
+      const tray = playMode && !readonly && !allDone ? `<div class="ytray">
+          <div class="dice-tray">${P.dice.map((v, i) => `<button class="die ${P.held[i] ? 'held' : ''} ${rolling && !P.held[i] ? 'rolling' : ''}" data-hold="${i}" ${P.rolls && P.rolls < 3 && !rolling ? '' : 'disabled'}>${v == null ? '' : dieFace(v)}</button>`).join('')}</div>
+          <div class="row-btns"><button class="btn primary" data-act="roll" ${P.rolls >= 3 || rolling ? 'disabled' : ''}>${P.rolls === 0 ? '굴리기' : `다시 굴리기 (${3 - P.rolls}번 남음)`}</button></div>
+          <p class="muted center">${P.rolls === 0 ? `${esc(players[turn].name)} 차례예요. 주사위를 굴리세요.` : P.rolls < 3 ? '남길 주사위를 누르고 다시 굴리거나, 표에서 기록할 칸을 누르세요.' : '표에서 기록할 칸을 누르세요.'}</p>
+        </div>` : '';
       const row = (c) => `<tr><th class="cat">${esc(c.label)}</th>${players.map((_, pi) => cell(c, pi)).join('')}</tr>`;
       const pc = open && CATEGORIES.find((c) => c.key === open.key);
 
@@ -117,6 +154,7 @@ export default {
             <h2>점수표</h2>
             ${readonly ? '' : allDone ? '<span class="muted">모든 칸을 채웠어요</span>' : `<span class="ynext">다음 차례 <b>${esc(players[turn].name)}</b> · ${minDone + 1}/${CATEGORIES.length}턴</span>`}
           </div>
+          ${tray}
           <div class="table-wrap">
             <table class="ytable">
               <thead><tr><th></th>${players.map((p, pi) => `<th class="${pi === turn ? 'turn' : ''}">${esc(p.name)}</th>`).join('')}</tr></thead>
@@ -136,7 +174,7 @@ export default {
               <button class="key ghost" data-num="clear">지우기</button>
             </div>
           </div>` : ''}
-          ${readonly ? '' : `<div class="round-nav"><span class="muted">칸을 눌러 점수를 고르세요. 못 맞춘 칸은 0.</span><button class="btn primary" data-act="finish">게임 종료</button></div>`}
+          ${readonly ? '' : `<div class="round-nav"><span class="muted">${playMode ? '칸의 흐린 숫자가 지금 주사위로 받을 점수예요.' : '칸을 눌러 점수를 고르세요. 못 맞춘 칸은 0.'}</span><button class="btn primary" data-act="finish">게임 종료</button></div>`}
         </section>`;
     };
 
@@ -145,6 +183,28 @@ export default {
       if (!b) return;
       if (b.dataset.act === 'finish') { ctx.finish(); return; }
       if (readonly) return;
+      if (playMode) {
+        const t = computeTotals(session);
+        const minDone = Math.min(...t.map((x) => x.done));
+        const turn = t.findIndex((x) => x.done === minDone);
+        if (b.dataset.act === 'roll' && P.rolls < 3 && !rolling) {
+          rolling = true; let k = 0;
+          const tick = () => {
+            P.dice = P.dice.map((v, i) => (P.held[i] && v != null ? v : 1 + Math.floor(Math.random() * 6)));
+            if (k++ < 6) { draw(); setTimeout(tick, 60); return; }
+            rolling = false; P.rolls++; ctx.save(); draw();
+          };
+          tick(); return;
+        }
+        if (b.dataset.hold != null) { const i = Number(b.dataset.hold); P.held[i] = !P.held[i]; ctx.save(); draw(); return; }
+        if (b.dataset.pick && P.rolls > 0 && turn >= 0) {
+          d.scores[b.dataset.pick][turn] = scoreFor(b.dataset.pick, P.dice);
+          Object.assign(P, { dice: [null, null, null, null, null], held: [false, false, false, false, false], rolls: 0 });
+          ctx.save(); draw();
+          if (computeTotals(session).every((x) => x.done >= CATEGORIES.length)) setTimeout(() => ctx.finish({ ask: false }), 700);
+        }
+        return;
+      }
       if (b.dataset.cell) {
         const k = b.dataset.cell; const pi = Number(b.dataset.p);
         open = open && open.key === k && open.pi === pi ? null : { key: k, pi };

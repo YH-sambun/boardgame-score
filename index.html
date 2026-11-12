@@ -12,22 +12,23 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="점수판">
-  <link rel="stylesheet" href="css/style.css?v=202611121017">
+  <link rel="stylesheet" href="css/style.css?v=202611121111">
 </head>
 <body>
   <header>
-    <a class="logo" href="#/">🎲 보드게임 점수판</a>
+    <a class="logo" href="#/">보드게임 점수판</a>
     <div id="user"></div>
   </header>
   <nav>
     <a href="#/">홈</a>
     <a href="#/history">기록</a>
     <a href="#/stats">전적</a>
+    <a href="#/tools">도구</a>
     <a href="#/players">참가자</a>
     <a href="#/help">도움말</a>
   </nav>
   <main id="app"><p class="muted center">불러오는 중…</p></main>
   <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
-  <script type="module" src="js/app.js?v=202611121017"></script>
+  <script type="module" src="js/app.js?v=202611121111"></script>
 </body>
 </html>
