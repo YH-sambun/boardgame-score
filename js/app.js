@@ -1,5 +1,5 @@
-import { store } from './store.js?v=202611120744';
-import { GAMES, getGame } from './games/index.js?v=202611120744';
+import { store } from './store.js?v=202611120745';
+import { GAMES, getGame } from './games/index.js?v=202611120745';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
