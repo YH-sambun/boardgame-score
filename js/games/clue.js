@@ -12,10 +12,15 @@ export const CATS = [
 
 export const PRESETS = {
   classic: {
-    label: '클래식',
+    label: '오리지널',
     suspects: ['스칼렛', '머스타드 대령', '화이트 부인', '그린', '피콕 부인', '플럼 교수'],
     weapons: ['촛대', '단검', '납 파이프', '권총', '밧줄', '렌치'],
     rooms: ['부엌', '무도회장', '온실', '식당', '당구장', '도서관', '라운지', '홀', '서재'],
+  },
+  // 오리지널 2016년 이후 판: 화이트 부인 대신 오키드 박사
+  orchid: {
+    label: '오리지널 (2016~)',
+    suspects: ['스칼렛', '머스타드 대령', '오키드 박사', '그린', '피콕 부인', '플럼 교수'],
   },
   // 심슨 에디션: 판본에 따라 용의자가 다름 (도구·장소는 같음)
   simpsons1: {
@@ -31,6 +36,7 @@ const SIMPSONS_COMMON = {
   weapons: ['목걸이', '독 도넛', '늘어나는 장갑', '새총', '색소폰', '플루토늄 막대'],
   rooms: ['심슨네 집', '번즈 저택', '원자력 발전소', '퀵이마트', '바니 볼링장', '크러스티 스튜디오', '프라잉 더치맨', '안드로이드 던전', '양로원'],
 };
+Object.assign(PRESETS.orchid, { weapons: PRESETS.classic.weapons, rooms: PRESETS.classic.rooms });
 Object.assign(PRESETS.simpsons1, SIMPSONS_COMMON);
 Object.assign(PRESETS.simpsons2, SIMPSONS_COMMON);
 

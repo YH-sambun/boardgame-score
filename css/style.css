@@ -209,3 +209,9 @@ main{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 .clue-edit label{display:block;font-size:13px;font-weight:600;margin-top:8px}
 .clue-note.hidden .clue-body{filter:blur(10px);pointer-events:none;user-select:none}
 @media (min-width:600px){.clue-cell{height:42px;min-width:48px}.clue-name{font-size:15px}.clue-edit{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.clue-edit .btn{grid-column:1/-1}}
+/* 로그인 / 게스트 */
+.login{max-width:420px;margin:40px auto}
+.login .btn.block{margin-top:12px}
+.login .muted{margin:6px 0 14px}
+#user{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.login h2{justify-content:center}

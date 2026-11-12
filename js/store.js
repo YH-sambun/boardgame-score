@@ -1,5 +1,5 @@
 // 저장소: Firebase 설정이 있으면 Firestore, 없으면 localStorage
-import { firebaseConfig } from './firebase-config.js?v=202611120750';
+import { firebaseConfig } from './firebase-config.js?v=202611120757';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -147,4 +147,66 @@ function firestoreStore() {
   return s;
 }
 
-export const store = firebaseConfig.apiKey ? firestoreStore() : localStore();
+// 게스트 모드: 로그인하지 않으면 이 기기(localStorage)에만 저장. 로그인하면 Firestore.
+const GUEST_KEY = 'bgscore:guest';
+const getGuest = () => { try { return localStorage.getItem(GUEST_KEY) === '1'; } catch { return false; } };
+const setGuest = (v) => { try { v ? localStorage.setItem(GUEST_KEY, '1') : localStorage.removeItem(GUEST_KEY); } catch {} };
+
+function hybridStore() {
+  const fb = firestoreStore();
+  const lc = localStore();
+  let guest = getGuest();
+  let authCb = () => {};
+  let fbUser = null;
+  const active = () => (guest ? lc : fb);
+  const h = {
+    get mode() { return guest ? 'local' : 'firebase'; },
+    get guest() { return guest; },
+    get user() { return guest ? { displayName: '게스트' } : fb.user; },
+    async init() { await fb.init(); },
+    onAuth(cb) {
+      authCb = cb;
+      fb.onAuth((u) => {
+        fbUser = u;
+        if (u) { guest = false; setGuest(false); cb(u); } else cb(guest ? h.user : null);
+      });
+    },
+    async signIn() { await fb.signIn(); },
+    async signOut() {
+      if (guest) { guest = false; setGuest(false); authCb(null); return; }
+      await fb.signOut();
+    },
+    enterGuest() { guest = true; setGuest(true); authCb(h.user); },
+    // 이 기기에 남은 게스트 기록 수
+    async guestDataCount() {
+      const [ss, ps] = await Promise.all([lc.listSessions(), lc.listPlayers()]);
+      return { sessions: ss.length, players: ps.length };
+    },
+    // 게스트 기록을 로그인한 계정으로 옮기고 이 기기에서는 지움
+    async importGuestData() {
+      const [lPlayers, lSessions, mine] = await Promise.all([lc.listPlayers(), lc.listSessions(), fb.listPlayers()]);
+      const idMap = new Map();
+      for (const p of lPlayers) {
+        const same = mine.find((m) => m.name === p.name);
+        idMap.set(p.id, same ? same.id : (await fb.addPlayer(p.name)).id);
+      }
+      for (const s of lSessions.slice().reverse()) {
+        const { id, shared, ...rest } = s;
+        const players = s.players.map((p) => ({ ...p, id: idMap.get(p.id) || p.id }));
+        const created = await fb.createSession({ ...rest, players, playerIds: players.map((p) => p.id) });
+        const note = await lc.getNote(id); // 클루 개인 노트도 함께 옮김
+        if (note) await fb.setNote(created.id, note);
+      }
+      for (const s of lSessions) await lc.deleteSession(s.id);
+      for (const p of lPlayers) await lc.deletePlayer(p.id);
+      return lSessions.length;
+    },
+  };
+  for (const k of ['listPlayers', 'addPlayer', 'deletePlayer', 'renamePlayer', 'setPlayerEmail', 'getMeta', 'setMeta',
+    'createSession', 'getSession', 'updateSession', 'deleteSession', 'listSessions', 'getNote', 'setNote']) {
+    h[k] = (...a) => active()[k](...a);
+  }
+  return h;
+}
+
+export const store = firebaseConfig.apiKey ? hybridStore() : localStore();
