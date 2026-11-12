@@ -454,3 +454,8 @@ table.h2h td.self{background:var(--chip)}
 .gmark.ico{background:none;font-size:34px;line-height:1}
 .gmark.ico.sm{font-size:19px}
 .gmark.ico.big{font-size:50px}
+/* 버전·업데이트 */
+.app-info .btn.block{margin-top:6px}
+@media (min-width:1100px){.card.app-info{max-width:860px;margin:12px auto}}
+.update-bar{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);padding:8px 8px 8px 14px;border-radius:12px;z-index:25;box-shadow:0 6px 20px rgba(0,0,0,.25);white-space:nowrap}
+.update-bar .btn.ghost{color:var(--bg);border-color:transparent}

@@ -1,5 +1,5 @@
 // 전적 계산 (완료된 게임 기록만으로 계산, 따로 저장하지 않음)
-import { getGame } from './games/index.js?v=202611121133';
+import { getGame } from './games/index.js?v=202611121136';
 
 // 동점은 같은 등수 (1, 1, 3 ...)
 export function ranks(totals) {
