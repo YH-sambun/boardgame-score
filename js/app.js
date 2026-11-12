@@ -1,9 +1,9 @@
-import { store } from './store.js?v=202611121136';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121136';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121136';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121136';
-import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121136';
-import { viewTools } from './tools.js?v=202611121136';
+import { store } from './store.js?v=202611121154';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121154';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121154';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121154';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121154';
+import { viewTools } from './tools.js?v=202611121154';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -148,7 +148,7 @@ async function viewNew(gameId) {
           ${players.map((p) => { const i = selected.indexOf(p.id); return `<button class="chip ${i >= 0 ? 'on' : ''}" data-pick="${p.id}">${i >= 0 ? `<i>${i + 1}</i>` : ''}${esc(p.name)}</button>`; }).join('')}
         </div>
         <form class="inline" id="addp"><input name="n" placeholder="새 참가자 이름" maxlength="20" autocomplete="off"><button class="btn">추가</button></form>
-        ${g.settingsFields.map(fieldHtml).join('')}
+        ${g.settingsFields.filter((f) => !f.show || f.show({ count: selected.length, settings, mode })).map(fieldHtml).join('')}
         <button class="btn primary block" id="start" ${selected.length < g.minPlayers ? 'disabled' : ''}>게임 시작 (${selected.length}명)</button>
       </section>`;
   };
@@ -165,7 +165,7 @@ async function viewNew(gameId) {
     if (o) { const f = g.settingsFields.find((x) => x.key === o.dataset.opt); settings[f.key] = f.options.find((x) => String(x.value) === o.dataset.val).value; draw(); return; }
     if (e.target.id === 'start') {
       const picked = selected.map((id) => players.find((p) => p.id === id)).map((p) => ({ id: p.id, name: p.name, email: p.email || null }));
-      const ps = g.preparePlayers ? g.preparePlayers(picked, settings) : picked; // 예: 체스 1명이면 컴퓨터 추가
+      const ps = g.preparePlayers ? g.preparePlayers(picked, { ...settings, mode }) : picked; // 예: 체스 1명이면 컴퓨터 추가
       const now = Date.now();
       const st = { ...settings };
       if (g.modes.length > 1) st.mode = mode;

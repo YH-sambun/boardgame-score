@@ -1,6 +1,9 @@
 // 오목: 한 기기에서 번갈아 두기 (15×15). 먼저 고른 사람이 흑(선).
 //  렌주룰을 켜면 흑은 3·3, 4·4, 6목 이상(장목)이 금지 (흑이 다섯을 만드는 수는 예외로 허용).
+//  혼자 고르면 컴퓨터와 대국 (settings.cpuSide: 내 돌 흑/백, cpuLevel: 실력)
 // session.data = { moves:[칸 번호], winner:자리|null, draw:bool }
+import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES } from './cpu.js?v=202611121154';
+import { pickMove } from './omok-ai.js?v=202611121154';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const N = 15;
 const DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];
@@ -69,25 +72,37 @@ export default {
   id: 'omok',
   name: '오목',
   guide: {
-    players: '2명', time: '5~15분',
-    intro: '바둑판에 흑과 백이 번갈아 돌을 놓아, 가로·세로·대각선으로 다섯 개를 먼저 잇는 사람이 이기는 게임이에요. 한 폰으로 번갈아 둬요.',
+    players: '1~2명 (1명이면 컴퓨터와)', time: '5~15분',
+    intro: '바둑판에 흑과 백이 번갈아 돌을 놓아, 가로·세로·대각선으로 다섯 개를 먼저 잇는 사람이 이기는 게임이에요. 한 폰으로 번갈아 두거나, 혼자면 컴퓨터와 둬요.',
     rules: [
       '먼저 고른 사람이 흑으로 먼저 둬요. 빈 교차점을 누르면 돌이 놓여요.',
       '가로·세로·대각선으로 같은 색 다섯 개를 이으면 이겨요.',
       '렌주룰을 켜면 흑은 3·3(열린 셋 두 개 동시), 4·4(넷 두 개 동시), 6목 이상이 금지예요. 흑이 다섯을 만드는 수는 괜찮아요. 백은 제한 없어요.',
-      '실수했으면 무르기로 한 수씩 되돌릴 수 있어요.',
+      '실수했으면 무르기로 한 수씩 되돌릴 수 있어요. 컴퓨터와 둘 때는 컴퓨터 수와 내 수가 함께 물러져요.',
+      '혼자 고르면 컴퓨터와 둬요. 새 게임 화면에서 내 돌(흑·백)과 컴퓨터 실력(쉬움·보통·어려움)을 고를 수 있어요.',
     ],
-    scoring: ['이기면 승, 지면 패로 전적에 남아요. 판이 다 차면 무승부예요.'],
+    scoring: ['이기면 승, 지면 패로 전적에 남아요. 판이 다 차면 무승부예요.', '컴퓨터는 전적 목록에 나오지 않아요.'],
     tips: [
       '양쪽이 열린 셋을 만들면 상대는 반드시 막아야 해요. 막는 사이에 다른 곳에 셋을 하나 더 만들면 이겨요.',
       '상대의 열린 셋은 바로 막으세요. 한 칸 띈 셋(●●·●)도 열린 셋이에요.',
       '렌주룰 없이 하면 흑이 많이 유리해요. 실력 차가 크면 약한 사람이 흑을 잡으세요.',
+      '어려움 컴퓨터는 넷을 연달아 만들어 이기는 수를 잘 찾아요. 상대의 넷 하나에 한 칸 띈 셋이 겹치는 자리를 조심하세요.',
     ],
   },
-  minPlayers: 2,
+  minPlayers: 1,
   maxPlayers: 2,
-  pickHint: '두 사람을 고르세요. 먼저 고른 사람이 흑(먼저 둠)이에요.',
-  settingsFields: [{ key: 'renju', label: '렌주룰', default: false, options: [{ value: false, label: '끄기 (자유룰)' }, { value: true, label: '켜기 (흑 3·3 등 금지)' }] }],
+  pickHint: '두 사람을 고르면 먼저 고른 사람이 흑(먼저 둠)이에요. 1명만 고르면 컴퓨터와 둬요.',
+  settingsFields: [
+    { key: 'renju', label: '렌주룰', default: false, options: [{ value: false, label: '끄기 (자유룰)' }, { value: true, label: '켜기 (흑 3·3 등 금지)' }] },
+    { key: 'cpuSide', label: '내 돌', default: 'black', show: ({ count }) => count === 1, options: [{ value: 'black', label: '흑 (먼저)' }, { value: 'white', label: '백 (나중)' }] },
+    levelField(),
+  ],
+
+  // 1명만 고르면 컴퓨터를 상대로 추가 (내 돌이 백이면 컴퓨터가 흑 자리)
+  preparePlayers(ps, settings) {
+    if (ps.length !== 1) return ps;
+    return settings?.cpuSide === 'white' ? [...cpuPlayers(1), ...ps] : [...ps, ...cpuPlayers(1)];
+  },
   roundLabel: '대국',
 
   initData() { return { moves: [], winner: null, draw: false }; },
@@ -104,6 +119,10 @@ export default {
     const renju = !!session.settings?.renju;
     let msg = '';
     const over = () => d.winner != null || d.draw || session.status === 'finished';
+    const cpuSeat = players.findIndex(isCpu);
+    const level = levelOf(session);
+    let thinking = false;
+    const humanTurn = () => cpuSeat < 0 || d.moves.length % 2 !== cpuSeat;
 
     const draw = () => {
       const b = boardOf(d.moves);
@@ -111,15 +130,44 @@ export default {
       const last = d.moves[d.moves.length - 1];
       root.innerHTML = `<section class="card omok-card">
         <div class="omok-players">${players.map((p, i) => `<span class="${!over() && turn === i ? 'turn' : ''}"><i class="stone s${i + 1}"></i>${esc(p.name)}</span>`).join('')}</div>
-        <div class="chess-status ${over() ? 'done' : ''}">${d.winner != null ? `${esc(players[d.winner].name)} 승리!` : d.draw ? '무승부' : `${esc(players[turn].name)} 차례 (${turn ? '백' : '흑'})${renju ? ' · 렌주룰' : ''}`}</div>
-        <div class="omok-board">${Array.from({ length: N * N }, (_, i) => `<button class="pt ${i % N === 0 ? 'l' : ''} ${i % N === N - 1 ? 'r' : ''} ${i < N ? 't' : ''} ${i >= N * (N - 1) ? 'b' : ''} ${[48, 56, 112, 168, 176].includes(i) ? 'star' : ''}" data-i="${i}" ${over() || b[i] ? 'disabled' : ''}>${b[i] ? `<i class="stone s${b[i]} ${i === last ? 'last' : ''}"></i>` : ''}</button>`).join('')}</div>
+        <div class="chess-status ${over() ? 'done' : ''}">${d.winner != null ? `${esc(players[d.winner].name)} 승리!` : d.draw ? '무승부' : thinking ? '컴퓨터가 생각 중…' : `${esc(players[turn].name)} 차례 (${turn ? '백' : '흑'})${renju ? ' · 렌주룰' : ''}`}${cpuSeat >= 0 ? ` <small class="muted">· 컴퓨터 ${LEVEL_NAMES[level]}</small>` : ''}</div>
+        <div class="omok-board ${thinking ? 'busy' : ''}">${Array.from({ length: N * N }, (_, i) => `<button class="pt ${i % N === 0 ? 'l' : ''} ${i % N === N - 1 ? 'r' : ''} ${i < N ? 't' : ''} ${i >= N * (N - 1) ? 'b' : ''} ${[48, 56, 112, 168, 176].includes(i) ? 'star' : ''}" data-i="${i}" ${over() || b[i] || !humanTurn() ? 'disabled' : ''}>${b[i] ? `<i class="stone s${b[i]} ${i === last ? 'last' : ''}"></i>` : ''}</button>`).join('')}</div>
         <p class="quiz-msg no">${esc(msg)}</p>
         <div class="chess-actions">
-          ${session.status === 'finished' ? '' : `<button class="btn small" data-act="undo" ${d.moves.length ? '' : 'disabled'}>무르기</button>
+          ${session.status === 'finished' ? '' : `<button class="btn small" data-act="undo" ${canUndo() ? '' : 'disabled'}>무르기</button>
           ${over() ? '<button class="btn primary small" data-act="finish">전적에 기록</button>' : '<button class="btn small" data-act="resign">기권</button>'}`}
         </div>
         <p class="muted center">${d.moves.length}수</p>
       </section>`;
+    };
+
+    // 컴퓨터와 둘 때는 사람의 수가 하나 이상 있어야 무를 수 있음 (컴퓨터 수와 함께 물림)
+    const canUndo = () => !thinking && (cpuSeat < 0 ? d.moves.length > 0 : d.moves.length > (cpuSeat === 0 ? 1 : 0));
+
+    const place = (i) => {
+      const b = boardOf(d.moves);
+      const turn = d.moves.length % 2;
+      d.moves.push(i);
+      b[i] = turn + 1;
+      if (isFive(b, i, turn + 1, renju && turn === 0)) d.winner = turn;
+      else if (d.moves.length === N * N) d.draw = true;
+      ctx.save(); draw();
+      if (over()) setTimeout(() => ctx.finish({ ask: false }), 900);
+      else maybeComputer();
+    };
+
+    // 컴퓨터 차례면 잠깐 뒤에 둠 (화면이 먼저 그려지도록)
+    const maybeComputer = () => {
+      if (cpuSeat < 0 || over() || humanTurn() || thinking) return;
+      thinking = true; draw();
+      setTimeout(() => {
+        if (!root.isConnected) return;
+        let i = -1;
+        try { i = pickMove(d.moves, level, renju ? forbidden : null); } catch (err) { console.error(err); }
+        thinking = false;
+        if (i < 0 || over()) return draw();
+        place(i);
+      }, 350 + Math.random() * 300);
     };
 
     root.onclick = (e) => {
@@ -127,26 +175,27 @@ export default {
       if (!btn) return;
       const act = btn.dataset.act;
       if (act === 'finish') return ctx.finish({ ask: false });
-      if (session.status === 'finished') return;
-      if (act === 'undo') { d.moves.pop(); d.winner = null; d.draw = false; msg = ''; ctx.save(); return draw(); }
-      if (act === 'resign') {
-        const turn = d.moves.length % 2;
-        if (!confirm(`${players[turn].name}님이 기권할까요?`)) return;
-        d.winner = 1 - turn; ctx.save(); draw(); return ctx.finish({ ask: false });
+      if (session.status === 'finished' || thinking) return;
+      if (act === 'undo') {
+        if (!canUndo()) return;
+        d.moves.pop();
+        if (cpuSeat >= 0 && !humanTurn()) d.moves.pop();
+        d.winner = null; d.draw = false; msg = ''; ctx.save(); draw(); return maybeComputer();
       }
-      if (btn.dataset.i == null || over()) return;
+      if (act === 'resign') {
+        const me = cpuSeat >= 0 ? 1 - cpuSeat : d.moves.length % 2;
+        if (!confirm(`${players[me].name}님이 기권할까요?`)) return;
+        d.winner = 1 - me; ctx.save(); draw(); return ctx.finish({ ask: false });
+      }
+      if (btn.dataset.i == null || over() || !humanTurn()) return;
       const i = Number(btn.dataset.i);
       const b = boardOf(d.moves);
       const turn = d.moves.length % 2;
       if (renju && turn === 0) { const why = forbidden(b, i); if (why) { msg = `${why}: 흑은 그 자리에 둘 수 없어요`; return draw(); } }
       msg = '';
-      d.moves.push(i);
-      b[i] = turn + 1;
-      if (isFive(b, i, turn + 1, renju && turn === 0)) d.winner = turn;
-      else if (d.moves.length === N * N) d.draw = true;
-      ctx.save(); draw();
-      if (over()) setTimeout(() => ctx.finish({ ask: false }), 900);
+      place(i);
     };
     draw();
+    maybeComputer();
   },
 };
