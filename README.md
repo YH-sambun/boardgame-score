@@ -4,7 +4,7 @@
 
 - 빌드 도구 없음 (순수 HTML/JS) → GitHub Pages에 그대로 올리면 동작
 - `js/firebase-config.js` 가 비어 있으면 **이 기기(localStorage)에만 저장**, 채우면 **Firestore** 에 저장되어 모든 기기에서 공유
-- Google 로그인 + 이메일 허용 목록으로 가족만 쓰고 쓰기 가능
+- Google로 로그인한 누구나 사용 가능, 기록은 계정별로 따로 저장 (남의 기록은 볼 수 없음)
 
 ## 1. GitHub 저장소 + Pages
 1. GitHub에서 새 저장소 생성 (예: `boardgame-score`, Public)
@@ -19,9 +19,10 @@
 4. **Authentication → 설정 → 승인된 도메인** 에 `<아이디>.github.io` 추가
 5. **프로젝트 설정(⚙️) → 내 앱 → 웹(</>) 앱 추가** → 나오는 `firebaseConfig` 값을 `js/firebase-config.js` 에 붙여넣기
    (apiKey 는 공개돼도 되는 값입니다. 보안은 아래 규칙이 담당)
-6. **Firestore → 규칙** 탭에 `firestore.rules` 내용을 붙여넣고, 허용할 이메일 목록을 수정 후 게시
+6. **Firestore → 규칙** 탭에 `firestore.rules` 내용을 붙여넣고 게시
 
 ## 데이터 구조 (Firestore)
+모든 데이터는 `users/{로그인 계정 uid}/` 아래에 저장됩니다.
 - `players/{id}`: `{ name, createdAt }`
 - `sessions/{id}`: `{ gameId, players:[{id,name}], playerIds, settings, data, totals, status:'playing'|'finished', createdAt, updatedAt, finishedAt }`
   - 스컬킹 `data`: `{ rounds:[{ bids:[], wins:[], bonus:[] }], current }`

@@ -1,12 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 허용할 Google 계정 이메일을 적어 주세요 (가족 계정 등).
-    function allowed() {
-      return request.auth != null
-        && request.auth.token.email in ['your-email@gmail.com'];
+    // Google로 로그인한 누구나 사용할 수 있고, 각자 자기 기록만 읽고 쓸 수 있습니다.
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
-    match /players/{id} { allow read, write: if allowed(); }
-    match /sessions/{id} { allow read, write: if allowed(); }
   }
 }

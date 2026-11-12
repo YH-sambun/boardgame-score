@@ -25,8 +25,11 @@ function localStore() {
   };
 }
 
+// 데이터는 로그인한 계정별로 users/{uid}/players, users/{uid}/sessions 에 따로 저장됩니다.
 function firestoreStore() {
   let fs, db, auth, A;
+  const col = (name) => fs.collection(db, 'users', s.user.uid, name);
+  const ref = (name, id) => fs.doc(db, 'users', s.user.uid, name, id);
   const s = {
     mode: 'firebase',
     user: null,
@@ -42,25 +45,25 @@ function firestoreStore() {
     async signIn() { await A.signInWithPopup(auth, new A.GoogleAuthProvider()); },
     async signOut() { await A.signOut(auth); },
     async listPlayers() {
-      const snap = await fs.getDocs(fs.collection(db, 'players'));
+      const snap = await fs.getDocs(col('players'));
       return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
     },
     async addPlayer(name) {
       const p = { name, createdAt: Date.now() };
-      const ref = await fs.addDoc(fs.collection(db, 'players'), p);
-      return { id: ref.id, ...p };
+      const r = await fs.addDoc(col('players'), p);
+      return { id: r.id, ...p };
     },
-    async deletePlayer(id) { await fs.deleteDoc(fs.doc(db, 'players', id)); },
+    async deletePlayer(id) { await fs.deleteDoc(ref('players', id)); },
     async createSession(x) {
       const data = { ...x, createdBy: s.user?.uid || null };
-      const ref = await fs.addDoc(fs.collection(db, 'sessions'), data);
-      return { id: ref.id, ...data };
+      const r = await fs.addDoc(col('sessions'), data);
+      return { id: r.id, ...data };
     },
-    async getSession(id) { const d = await fs.getDoc(fs.doc(db, 'sessions', id)); return d.exists() ? { id: d.id, ...d.data() } : null; },
-    async updateSession(id, patch) { await fs.updateDoc(fs.doc(db, 'sessions', id), patch); },
-    async deleteSession(id) { await fs.deleteDoc(fs.doc(db, 'sessions', id)); },
+    async getSession(id) { const d = await fs.getDoc(ref('sessions', id)); return d.exists() ? { id: d.id, ...d.data() } : null; },
+    async updateSession(id, patch) { await fs.updateDoc(ref('sessions', id), patch); },
+    async deleteSession(id) { await fs.deleteDoc(ref('sessions', id)); },
     async listSessions() {
-      const snap = await fs.getDocs(fs.query(fs.collection(db, 'sessions'), fs.orderBy('createdAt', 'desc')));
+      const snap = await fs.getDocs(fs.query(col('sessions'), fs.orderBy('createdAt', 'desc')));
       return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     },
   };
