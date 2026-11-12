@@ -1,5 +1,5 @@
-import { store } from './store.js?v=202611120753';
-import { GAMES, getGame } from './games/index.js?v=202611120753';
+import { store } from './store.js?v=202611120755';
+import { GAMES, getGame } from './games/index.js?v=202611120755';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -29,7 +29,7 @@ async function viewHome() {
     <section class="card">
       <h2>새 게임</h2>
       <div class="game-grid">
-        ${GAMES.map((g) => `<a class="game-tile" href="#/new/${g.id}"><span class="emoji">${g.emoji}</span>${g.name}</a>`).join('')}
+        ${GAMES.map((g) => `<button type="button" class="game-tile" data-intro="${g.id}"><span class="emoji">${g.emoji}</span>${g.name}</button>`).join('')}
         <div class="game-tile disabled"><span class="emoji">➕</span>다른 게임은 추가 예정</div>
       </div>
     </section>
@@ -39,6 +39,61 @@ async function viewHome() {
       <h2>최근 기록 <a class="more" href="#/history">전체 보기</a></h2>
       ${recent.length ? recent.map(sessionRow).join('') : '<p class="muted">아직 끝난 게임이 없어요.</p>'}
     </section></div></div>`;
+  $app.onclick = (e) => {
+    const t = e.target.closest('[data-intro]');
+    if (t) showIntro(getGame(t.dataset.intro));
+  };
+}
+
+// 게임 소개 팝업: 확인 → 새 게임 화면, 룰·팁 → 도움말 화면
+function showIntro(g) {
+  if (!g) return;
+  const gd = g.guide || {};
+  const box = document.createElement('div');
+  box.className = 'modal-back';
+  box.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+      <div class="modal-icon">${g.emoji}</div>
+      <h2 id="intro-title">${g.name}</h2>
+      <p class="meta">👥 ${esc(gd.players || `${g.minPlayers}~${g.maxPlayers}명`)}${gd.time ? ` · ⏱ ${esc(gd.time)}` : ''}</p>
+      ${gd.intro ? `<p class="intro">${esc(gd.intro)}</p>` : ''}
+      <a class="help-link" href="#/help/${g.id}">📖 게임 룰과 팁 보기</a>
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close>취소</button>
+        <button type="button" class="btn primary" data-go>확인</button>
+      </div>
+    </div>`;
+  const close = () => { box.remove(); removeEventListener('keydown', onKey); removeEventListener('hashchange', close); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  box.onclick = (e) => {
+    if (e.target === box || e.target.closest('[data-close]')) close();
+    else if (e.target.closest('[data-go]')) { close(); location.hash = `#/new/${g.id}`; }
+  };
+  addEventListener('keydown', onKey);
+  addEventListener('hashchange', close);
+  document.body.appendChild(box);
+  box.querySelector('[data-go]').focus();
+}
+
+// 도움말: 게임별 소개 · 진행 방법 · 점수 계산 · 팁
+function viewHelp(gameId) {
+  const g = getGame(gameId) || GAMES[0];
+  const gd = g.guide || {};
+  const list = (items) => `<ul class="help-list">${items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  $app.innerHTML = `<section class="card help">
+    <h2>도움말</h2>
+    <div class="chips">${GAMES.map((x) => `<a class="chip ${x.id === g.id ? 'on' : ''}" href="#/help/${x.id}">${x.emoji} ${x.name}</a>`).join('')}</div>
+    <div class="help-head">
+      <span class="help-icon">${g.emoji}</span>
+      <div><h3>${g.name}</h3><p class="muted">👥 ${esc(gd.players || `${g.minPlayers}~${g.maxPlayers}명`)}${gd.time ? ` · ⏱ ${esc(gd.time)}` : ''}</p></div>
+    </div>
+    ${gd.intro ? `<p class="intro">${esc(gd.intro)}</p>` : ''}
+    ${gd.rules?.length ? `<h3>🎯 진행 방법</h3>${list(gd.rules)}` : ''}
+    ${gd.scoring?.length ? `<h3>🧮 점수 계산</h3>${list(gd.scoring)}` : ''}
+    ${gd.tips?.length ? `<h3>💡 팁</h3>${list(gd.tips)}` : ''}
+    ${!gd.intro && !gd.rules ? '<p class="muted">이 게임의 도움말은 준비 중이에요.</p>' : ''}
+    <p class="muted note">게임을 빨리 익히기 위한 요약이에요. 에디션마다 세부 규칙이 다를 수 있으니, 애매할 땐 가지고 있는 룰북을 기준으로 해 주세요.</p>
+    <a class="btn primary block" href="#/new/${g.id}">${g.name} 새 게임 시작</a>
+  </section>`;
 }
 
 function sessionRow(s) {
@@ -63,7 +118,7 @@ async function viewNew(gameId) {
   const draw = () => {
     $app.innerHTML = `
       <section class="card">
-        <h2>${g.emoji} ${g.name} 새 게임</h2>
+        <h2>${g.emoji} ${g.name} 새 게임 <a class="more" href="#/help/${g.id}">📖 룰·팁</a></h2>
         <p class="muted">참가자를 순서대로 눌러 주세요 (${g.minPlayers}~${g.maxPlayers}명). 누른 순서가 자리 순서가 됩니다.</p>
         <div class="chips">
           ${players.map((p) => { const i = selected.indexOf(p.id); return `<button class="chip ${i >= 0 ? 'on' : ''}" data-pick="${p.id}">${i >= 0 ? `<i>${i + 1}</i>` : ''}${esc(p.name)}</button>`; }).join('')}
@@ -121,6 +176,7 @@ async function viewPlay(id) {
   $app.innerHTML = `<div class="play-top">
       <h2>${g.emoji} ${g.name} <span class="muted">${fmtDate(s.createdAt)}</span></h2>
       <div class="actions">
+        <a class="btn ghost small" href="#/help/${g.id}">📖 룰</a>
         ${s.status === 'finished' ? '<button class="btn ghost small" id="reopen">다시 수정</button>' : ''}
         ${s.shared ? `<span class="badge shared">${esc(s.ownerName || '다른 계정')}님이 공유</span>` : '<button class="btn ghost small danger" id="del">삭제</button>'}
       </div>
@@ -322,6 +378,7 @@ async function route() {
     else if (parts[0] === 'history') await viewHistory();
     else if (parts[0] === 'stats') await viewStats();
     else if (parts[0] === 'players') await viewPlayers();
+    else if (parts[0] === 'help') viewHelp(parts[1]);
     else viewNotFound();
   } catch (err) {
     console.error(err);
