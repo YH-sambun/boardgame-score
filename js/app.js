@@ -1,8 +1,9 @@
-import { store } from './store.js?v=202611121133';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121133';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121133';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121133';
-import { viewTools } from './tools.js?v=202611121133';
+import { store } from './store.js?v=202611121136';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121136';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121136';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121136';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121136';
+import { viewTools } from './tools.js?v=202611121136';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -106,6 +107,8 @@ async function viewHelp(gameId) {
     <p class="muted note">게임을 빨리 익히기 위한 요약이에요. 에디션마다 세부 규칙이 다를 수 있으니, 애매할 땐 가지고 있는 룰북을 기준으로 해 주세요.</p>
     <div class="help-start">${g.modes.map((m) => `<a class="btn primary" href="#/new/${g.id}${g.modes.length > 1 ? `?mode=${m}` : ''}">${g.name} ${g.modes.length > 1 ? MODE_NAME[m] + ' ' : ''}시작</a>`).join('')}</div>
   </section>`;
+  $app.insertAdjacentHTML('beforeend', appInfoHtml());
+  bindAppInfo($app);
 }
 
 // 게임 모듈이 totalLabel(total) 을 주면 숫자 대신 그 글자로 표시 (예: 클루 '정답')
@@ -517,6 +520,7 @@ async function main() {
   });
   window.addEventListener('hashchange', route);
   prefetchGames();
+  watchForUpdate();
 }
 
 if (typeof document !== 'undefined' && $app) main();

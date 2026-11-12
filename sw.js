@@ -15,7 +15,7 @@ const put = (req, res) => { if (res.ok) { const copy = res.clone(); caches.open(
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
-  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (req.method !== 'GET' || url.origin !== self.location.origin || url.searchParams.has('check')) return;
   if (url.searchParams.has('v')) {
     e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => put(req, res))));
     return;
