@@ -1,5 +1,5 @@
 // 도구: 선 뽑기 · 타이머 · 주사위/코인. 모두 이 기기 안에서만 동작하고 저장하지 않음
-import { tipBtn, tipBody, selectHtml } from './ui.js?v=202611121436';
+import { tipBtn, tipBody, selectHtml } from './ui.js?v=202611121446';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rand = (n) => Math.floor(Math.random() * n);
 const TABS = [['pick', '선 뽑기'], ['timer', '타이머'], ['dice', '주사위·코인']];

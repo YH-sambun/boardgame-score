@@ -2,8 +2,8 @@
 //  문제는 tools/gen-carpark.mjs 로 미리 만들어 둔 것(최소 이동 수를 계산해 단계별로 나눔)에서 고름
 //  '오늘의 문제'는 날짜로 정해진 같은 문제
 // session.data = { level, daily, start, min, cur, hist:[이전 상태], moves, hints, elapsed, solved, gaveUp }
-import { PUZZLES } from './carpark-puzzles.js?v=202611121436';
-import { vehicles, range, slide, solved, solve, N, EXIT_ROW } from './carpark-solver.js?v=202611121436';
+import { PUZZLES } from './carpark-puzzles.js?v=202611121446';
+import { vehicles, range, slide, solved, solve, N, EXIT_ROW } from './carpark-solver.js?v=202611121446';
 
 export const LEVELS = [
   { name: '입문', pts: 50 },
