@@ -2,9 +2,12 @@
 //  - 한 기기: 둘이 한 폰/태블릿으로 번갈아 둠
 //  - 온라인: 로그인한 두 사람이 각자 기기에서 둠 (Firestore 실시간 동기화). 상대 참가자에 Google 이메일 연결 필요
 //  - 컴퓨터: 참가자를 1명만 고르면 컴퓨터와 대국 (실력 5단계)
-// session.data = { mode, white(백을 잡은 자리), moves:[uci], result:{ winner:자리|null, reason }, level, seats:{자리:uid}, drawOffer, seq }
+//  - 기록하기(settings.mode 'record'): 실물 체스판으로 둔 뒤 누가 백이었는지와 결과만 입력
+//  - 체스 시계: 한 기기·컴퓨터 대국에서 시작 전에 고름 (분 + 수마다 더하는 초)
+// session.data = { mode:'local'|'online'|'ai'|'record', white(백을 잡은 자리), moves:[uci], result:{ winner:자리|null, reason }, level, seats:{자리:uid}, drawOffer, seq,
+//   clockOpt, clock:{ base, inc, left:[자리별 남은 ms], at:지금 차례가 시작된 시각|null, paused } }
 // 전적: 이김 1, 비김 0.5, 짐 -1 (진행 중 0)
-import { Chess, createBoard, engine, gameOverInfo, moveListHtml, uciObj } from './chess-board.js?v=202611121222';
+import { Chess, createBoard, engine, gameOverInfo, moveListHtml, uciObj } from './chess-board.js?v=202611121408';
 
 export const CPU_ID = 'cpu';
 export const LEVELS = [
@@ -15,6 +18,22 @@ export const LEVELS = [
   { label: '최강', opts: { depth: 10, timeMs: 3500 } },
 ];
 const MODE_LABEL = { local: '한 기기', online: '온라인', ai: '컴퓨터' };
+// 체스 시계 (분, 수마다 더하는 초)
+export const CLOCKS = [
+  { label: '없음' },
+  { label: '3분 + 2초', base: 3, inc: 2 },
+  { label: '5분', base: 5, inc: 0 },
+  { label: '10분', base: 10, inc: 0 },
+  { label: '15분 + 10초', base: 15, inc: 10 },
+  { label: '30분', base: 30, inc: 0 },
+];
+const REASONS = ['체크메이트', '기권', '시간 초과', '합의', '스테일메이트', '기타'];
+const clockText = (ms) => {
+  const t = Math.max(0, ms);
+  if (t < 10000) return (t / 1000).toFixed(1);
+  const s = Math.ceil(t / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -34,7 +53,7 @@ export default {
   settingsFields: [],
   guide: {
     players: '1~2명 (1명이면 컴퓨터와)', time: '10~60분',
-    intro: '킹을 잡을 수 없게 몰아붙이는(체크메이트) 쪽이 이기는 두 사람 전략 게임이에요. 한 기기에서 번갈아 두거나, 각자 폰으로 온라인 대국, 또는 컴퓨터와 둘 수 있어요.',
+    intro: '킹을 잡을 수 없게 몰아붙이는(체크메이트) 쪽이 이기는 두 사람 전략 게임이에요. 한 기기에서 번갈아 두거나, 각자 폰으로 온라인 대국, 또는 컴퓨터와 둘 수 있어요. 실물로 둔 대국은 점수 기록에서 결과만 남겨도 돼요.',
     rules: [
       '백이 먼저 두고 한 수씩 번갈아 둬요. 기물을 누르면 갈 수 있는 칸이 점으로 보여요.',
       '킹은 한 칸, 퀸은 모든 방향 직선, 룩은 가로·세로, 비숍은 대각선, 나이트는 L자(다른 기물을 뛰어넘음), 폰은 앞으로 한 칸(처음엔 두 칸)이고 대각선 앞으로 잡아요.',
@@ -44,6 +63,8 @@ export default {
       '내 킹이 공격받는 체크 상태로 수를 마칠 수 없어요. 체크를 피할 방법이 없으면 체크메이트로 져요.',
       '무승부: 둘 수 있는 수가 없는데 체크가 아닐 때(스테일메이트), 같은 장면 3번 반복, 50수 동안 잡기·폰 이동 없음, 메이트할 기물 부족, 또는 합의.',
       '온라인 대국: 상대 참가자에 Google 이메일을 연결하고 대국을 시작하면, 상대가 홈의 진행 중 목록에서 열어 바로 둘 수 있어요.',
+      '체스 시계: 한 기기·컴퓨터 대국은 시작 전에 시계(3분+2초, 5분, 10분, 15분+10초, 30분)를 고를 수 있어요. 수를 두면 상대 시계가 가고, 먼저 시간이 다 된 쪽이 져요. 멈춤 버튼으로 잠시 세울 수 있어요.',
+      '점수 기록 쪽의 체스는 실물 체스판으로 둔 뒤, 누가 백이었는지와 결과만 넣어 전적에 남기는 방식이에요.',
     ],
     scoring: ['이기면 승, 지면 패, 비기면 무로 전적에 남아요. 전적 탭에서 승·무·패와 승률을 볼 수 있어요.', '컴퓨터는 전적 목록에 나오지 않아요.'],
     tips: [
@@ -53,17 +74,20 @@ export default {
       '컴퓨터 상대는 입문부터 시작해 이기면 한 단계씩 올려 보세요.',
     ],
   },
-  pickHint: '1명을 고르면 컴퓨터와, 2명을 고르면 사람끼리 둡니다 (한 기기에서 번갈아 또는 각자 폰으로 온라인).',
+  pickHint: '1명을 고르면 컴퓨터와, 2명을 고르면 사람끼리 둡니다 (한 기기에서 번갈아 또는 각자 폰으로 온라인). 기록하기는 2명을 고르세요.',
+  minPlayersFor: (mode) => (mode === 'record' ? 2 : 1),
   tieIsNoWin: true, // 비긴 판은 1등(승) 횟수에 넣지 않음
 
-  // 1명만 고르면 컴퓨터를 상대로 추가
-  preparePlayers(ps) {
+  // 1명만 고르면 컴퓨터를 상대로 추가 (기록하기는 사람 둘만)
+  preparePlayers(ps, settings) {
+    if (settings?.mode === 'record') return ps;
     return ps.length === 1 ? [...ps, { id: CPU_ID, name: '🤖 컴퓨터', email: null }] : ps;
   },
 
-  initData(players) {
+  initData(players, settings) {
+    if (settings?.mode === 'record') return { mode: 'record', white: 0, moves: [], result: null, started: true, seq: 0 };
     const ai = players.some((p) => p.id === CPU_ID);
-    return { mode: ai ? 'ai' : null, white: 0, moves: [], result: null, level: 2, seats: {}, drawOffer: null, started: false, seq: 0 };
+    return { mode: ai ? 'ai' : null, white: 0, moves: [], result: null, level: 2, seats: {}, drawOffer: null, started: false, seq: 0, clockOpt: 0, clock: null };
   },
 
   computeTotals(session) {
@@ -75,6 +99,7 @@ export default {
   roundLabel: '대국',
 
   renderPlay(root, session, ctx) {
+    if (session.data.mode === 'record' || session.settings?.mode === 'record') return renderRecord(root, session, ctx);
     const d = session.data;
     const players = session.players;
     const readonly = session.status === 'finished';
@@ -103,8 +128,11 @@ export default {
     // ── 수 두기 ──
     function play(m) {
       if (d.result || readonly) return;
+      const mover = idxOf(chess.turn());
+      if (clockOut()) return;
       let res;
       try { res = chess.move(m); } catch { return; }
+      if (d.clock) { settle(mover); d.clock.left[mover] += d.clock.inc * 1000; }
       d.moves.push(res.from + res.to + (res.promotion || ''));
       d.drawOffer = null;
       lastSeenLen = d.moves.length;
@@ -118,7 +146,39 @@ export default {
       const over = gameOverInfo(chess);
       if (!over) return;
       d.result = { winner: over.winner == null ? null : idxOf(over.winner), reason: over.reason };
+      stopClock();
     }
+
+    // ── 체스 시계 ──
+    const running = () => d.clock && !d.result && !readonly && !d.clock.paused && d.clock.at != null;
+    const leftOf = (idx) => (!d.clock ? 0 : d.clock.left[idx] - (running() && idx === idxOf(chess.turn()) ? Date.now() - d.clock.at : 0));
+    // 지금 차례인 사람(또는 지정한 사람)이 쓴 시간을 남은 시간에서 빼고, 차례 시작 시각을 지금으로
+    function settle(idx = idxOf(chess.turn())) {
+      if (!d.clock) return;
+      if (running()) d.clock.left[idx] -= Date.now() - d.clock.at;
+      if (!d.clock.paused) d.clock.at = Date.now();
+    }
+    function stopClock() { if (d.clock && d.clock.at != null) { settle(); d.clock.at = null; } }
+    // 시간이 다 됐으면 지고 끝남
+    function clockOut() {
+      if (!running()) return false;
+      const turnIdx = idxOf(chess.turn());
+      if (leftOf(turnIdx) > 0) return false;
+      d.clock.left[turnIdx] = 0; d.clock.at = null;
+      d.result = { winner: 1 - turnIdx, reason: '시간 초과' };
+      thinking = false; bump(); draw();
+      return true;
+    }
+    const tick = setInterval(() => {
+      if (!root.isConnected) { clearInterval(tick); return; }
+      if (!running()) return;
+      if (clockOut()) return;
+      root.querySelectorAll('[data-clock]').forEach((el) => {
+        const ms = leftOf(Number(el.dataset.clock));
+        el.textContent = clockText(ms);
+        el.classList.toggle('low', ms < 20000);
+      });
+    }, 100);
 
     async function maybeComputer() {
       if (d.mode !== 'ai' || d.result || readonly || !d.started) return;
@@ -133,13 +193,16 @@ export default {
         const r = await engine('search', { fen: chess.fen(), opts: { ...LEVELS[d.level].opts, history: hist } });
         await new Promise((ok) => setTimeout(ok, Math.max(0, 450 - (Date.now() - started))));
         // 그 사이 무르기 등으로 판이 바뀌었으면 버림
-        if (d.moves.length !== lenAtStart || d.result || !r.move) return;
+        if (d.moves.length !== lenAtStart || d.result || !r.move || !root.isConnected) return;
         thinking = false;
         play(uciObj(r.move));
       } catch (err) { console.error(err); ctx.toast?.('컴퓨터 계산 오류'); } finally { thinking = false; draw(); }
     }
 
     // ── 화면 ──
+    const clockPick = () => `<p class="muted">체스 시계</p>
+      <div class="chips">${CLOCKS.map((c, i) => `<button class="chip ${(d.clockOpt || 0) === i ? 'on' : ''}" data-clock-opt="${i}">${c.label}</button>`).join('')}</div>
+      ${d.clockOpt ? '<p class="muted">각자 남은 시간이 판 위아래에 보여요. 수를 두면 상대 시계가 가고, 시간이 다 되면 져요.</p>' : ''}`;
     const setupHtml = () => {
       if (d.mode === 'ai') {
         const human = 1 - cpuIdx;
@@ -153,6 +216,7 @@ export default {
           </div>
           <p class="muted">컴퓨터 실력</p>
           <div class="chips">${LEVELS.map((l, i) => `<button class="chip ${d.level === i ? 'on' : ''}" data-level="${i}">${l.label}</button>`).join('')}</div>
+          ${clockPick()}
           <button class="btn primary block" data-act="start">대국 시작</button>
         </section>`;
       }
@@ -174,6 +238,7 @@ export default {
           ${players.map((p, i) => `<button class="chip ${d.white === i ? 'on' : ''}" data-white="${i}">⚪ 백: ${esc(p.name)}</button>`).join('')}
           <button class="chip" data-white="rand">🎲 무작위</button>
         </div>
+        ${d.mode === 'local' ? clockPick() : ''}
         <button class="btn primary block" data-act="start" ${!d.mode || (d.mode === 'online' && meSel == null) ? 'disabled' : ''}>대국 시작</button>
       </section>`;
     };
@@ -197,7 +262,7 @@ export default {
       const cap = captured(chess, colorOf(idx));
       return `<div class="chess-player ${!d.result && idxOf(chess.turn()) === idx ? 'turn' : ''}">
         <span>${colorOf(idx) === 'w' ? '⚪' : '⚫'} ${name(idx)}${d.mode === 'ai' && idx === cpuIdx ? ` <small class="muted">${LEVELS[d.level].label}</small>` : ''}</span>
-        <span class="caps">${cap}</span></div>`;
+        <span class="caps">${cap}</span>${d.clock ? `<span class="chess-clock ${leftOf(idx) < 20000 ? 'low' : ''} ${!d.result && idxOf(chess.turn()) === idx && !d.clock.paused ? 'on' : ''}" data-clock="${idx}">${clockText(leftOf(idx))}</span>` : ''}</div>`;
     };
 
     function draw() {
@@ -214,6 +279,7 @@ export default {
       if (!d.result && !readonly) {
         if (d.mode !== 'online' && d.moves.length) btns.push('<button class="btn ghost small" data-act="undo">↶ 무르기</button>');
         if (d.mode === 'local') btns.push('<button class="btn ghost small" data-act="draw">🤝 무승부</button>');
+        if (d.clock) btns.push(`<button class="btn ghost small" data-act="pause">${d.clock.paused ? '▶ 시계 다시' : '⏸ 시계 멈춤'}</button>`);
         if (online() && me != null) {
           if (offer != null && offer !== me) btns.push('<button class="btn small primary" data-act="accept">🤝 무승부 수락</button><button class="btn ghost small" data-act="decline">거절</button>');
           else btns.push(`<button class="btn ghost small" data-act="offer" ${offer === me ? 'disabled' : ''}>${offer === me ? '무승부 제안함' : '🤝 무승부 제안'}</button>`);
@@ -254,26 +320,37 @@ export default {
       if (ds.me != null) { d.seats = { [ds.me]: myUid }; return draw(); }
       if (ds.white != null) { d.white = ds.white === 'rand' ? Math.floor(Math.random() * 2) : Number(ds.white); if (ds.white === 'rand') ctx.toast?.(`백은 ${players[d.white].name}`); return draw(); }
       if (ds.level != null) { d.level = Number(ds.level); return draw(); }
+      if (ds.clockOpt != null) { d.clockOpt = Number(ds.clockOpt); return draw(); }
       const act = ds.act;
-      if (act === 'start') { d.started = true; bump(); draw(); maybeComputer(); return; }
+      if (act === 'start') {
+        const c = d.mode !== 'online' && CLOCKS[d.clockOpt || 0];
+        d.clock = c && c.base ? { base: c.base, inc: c.inc, left: [c.base * 60000, c.base * 60000], at: Date.now(), paused: false } : null;
+        d.started = true; bump(); draw(); maybeComputer(); return;
+      }
+      if (act === 'pause') {
+        if (!d.clock) return;
+        if (d.clock.paused) { d.clock.paused = false; d.clock.at = Date.now(); } else { settle(); d.clock.paused = true; d.clock.at = null; }
+        bump(); return draw();
+      }
       if (act === 'flip') { flipped = !flipped; return draw(); }
       if (act === 'undo') {
         let n = 1;
         if (d.mode === 'ai') { n = colorOf(cpuIdx) === chess.turn() && !thinking ? 1 : 2; if (thinking) n = 1; }
+        settle();
         d.moves.splice(Math.max(0, d.moves.length - n));
         thinking = false;
         chess = replay(d.moves); lastSeenLen = d.moves.length; bump(); draw();
         if (d.mode === 'ai' && colorOf(cpuIdx) === chess.turn()) maybeComputer();
         return;
       }
-      if (act === 'draw') { if (confirm('무승부로 끝낼까요?')) { d.result = { winner: null, reason: '합의' }; bump(); draw(); } return; }
+      if (act === 'draw') { if (confirm('무승부로 끝낼까요?')) { d.result = { winner: null, reason: '합의' }; stopClock(); bump(); draw(); } return; }
       if (act === 'offer') { d.drawOffer = myIdx(); bump(); draw(); return; }
       if (act === 'accept') { d.result = { winner: null, reason: '합의' }; d.drawOffer = null; bump(); draw(); return; }
       if (act === 'decline') { d.drawOffer = null; bump(); draw(); return; }
       if (act === 'resign') {
         const loser = d.mode === 'local' ? idxOf(chess.turn()) : myIdx();
         if (!confirm(`${players[loser].name}님이 기권할까요?`)) return;
-        d.result = { winner: 1 - loser, reason: '기권' }; bump(); draw(); return;
+        d.result = { winner: 1 - loser, reason: '기권' }; stopClock(); bump(); draw(); return;
       }
       if (act === 'finish') { finishing = true; ctx.finish(); }
     };
@@ -324,4 +401,62 @@ function captured(c, color) {
   let s = '';
   for (const t of ['q', 'r', 'b', 'n', 'p']) { const n = Math.max(0, START[t] - cnt[t]); s += SYM[opp][t].repeat(n); }
   return s ? s.split('').map((ch) => ch + '︎').join('') : '';
+}
+
+// ── 기록하기: 실물 체스판으로 둔 뒤 결과만 입력 ──
+function renderRecord(root, session, ctx) {
+  const d = session.data;
+  const players = session.players;
+  const readonly = session.status === 'finished';
+  if (d.white == null) d.white = 0;
+  const name = (i) => esc(players[i]?.name || '?');
+  const draw = () => {
+    const res = d.result;
+    const pk = res ? (res.winner == null ? 'draw' : res.winner === d.white ? 'w' : 'b') : null;
+    if (readonly) {
+      root.innerHTML = `<section class="card"><h3>실물 대국 기록</h3>
+        <p>⚪ 백 ${name(d.white)} · ⚫ 흑 ${name(1 - d.white)}</p>
+        <p><b>${!res ? '결과 없음' : res.winner == null ? '무승부' : `${name(res.winner)} 승리`}</b>${res?.reason ? ` <span class="muted">(${esc(res.reason)})</span>` : ''}${d.count ? ` <span class="muted">· ${d.count}수</span>` : ''}</p></section>`;
+      return;
+    }
+    root.innerHTML = `<section class="card">
+      <h3>실물 대국 결과 입력</h3>
+      <p class="muted">백을 잡은 사람</p>
+      <div class="chips">${players.map((p, i) => `<button class="chip ${d.white === i ? 'on' : ''}" data-white="${i}">⚪ 백: ${esc(p.name)}</button>`).join('')}</div>
+      <p class="muted">결과</p>
+      <div class="chips">
+        <button class="chip ${pk === 'w' ? 'on' : ''}" data-res="w">⚪ 백 ${name(d.white)} 승</button>
+        <button class="chip ${pk === 'b' ? 'on' : ''}" data-res="b">⚫ 흑 ${name(1 - d.white)} 승</button>
+        <button class="chip ${pk === 'draw' ? 'on' : ''}" data-res="draw">무승부</button>
+      </div>
+      <p class="muted">어떻게 끝났나요 (선택)</p>
+      <div class="chips">${REASONS.map((x) => `<button class="chip ${res?.reason === x ? 'on' : ''}" data-reason="${x}">${x}</button>`).join('')}</div>
+      <label class="setting"><span>둔 수 (선택)</span><input type="number" min="1" max="500" inputmode="numeric" data-count value="${d.count || ''}" placeholder="예: 42"></label>
+      <button class="btn primary block" data-act="finish" ${res ? '' : 'disabled'}>전적에 기록</button>
+    </section>`;
+  };
+  root.onclick = (e) => {
+    const t = e.target.closest('button');
+    if (!t || readonly) return;
+    const ds = t.dataset;
+    if (ds.white != null) {
+      const old = d.result ? (d.result.winner == null ? 'draw' : d.result.winner === d.white ? 'w' : 'b') : null;
+      d.white = Number(ds.white);
+      if (old && old !== 'draw') d.result.winner = old === 'w' ? d.white : 1 - d.white;
+    } else if (ds.res) {
+      const reason = d.result?.reason || null;
+      d.result = { winner: ds.res === 'draw' ? null : ds.res === 'w' ? d.white : 1 - d.white, reason };
+    } else if (ds.reason) {
+      if (!d.result) { ctx.toast?.('결과를 먼저 골라 주세요'); return; }
+      d.result.reason = d.result.reason === ds.reason ? null : ds.reason;
+    } else if (ds.act === 'finish') { ctx.finish(); return; } else return;
+    ctx.save(); draw();
+  };
+  root.onchange = (e) => {
+    if (!e.target.matches('[data-count]')) return;
+    const n = Math.round(Number(e.target.value));
+    d.count = n > 0 ? Math.min(500, n) : null;
+    ctx.save();
+  };
+  draw();
 }

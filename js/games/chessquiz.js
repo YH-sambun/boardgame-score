@@ -4,9 +4,9 @@
 // 여러 명이면 문제를 번갈아 풀고, 푼 문제 점수 합계로 순위를 매깁니다. 힌트를 쓰거나 틀리면 점수 절반(내림).
 // session.data = { level(1~10, 0이면 직접 고르기), types:[종류], started, cur,
 //   problems:[{ type, grade, pts, limit, noHint, oneShot, fen, color, first, player, moves:[uci], status:null|'ok'|'fail', hint, mistakes, points }] }
-import { Chess, createBoard, engine, mirrorFen, mirrorUci, uciObj, gameOverInfo } from './chess-board.js?v=202611121222';
-import { randomEndgame, Q, R, B } from './chess-engine.js?v=202611121222';
-import { MATE_PUZZLES } from './chess-puzzles.js?v=202611121222';
+import { Chess, createBoard, engine, mirrorFen, mirrorUci, uciObj, gameOverInfo } from './chess-board.js?v=202611121408';
+import { randomEndgame, Q, R, B } from './chess-engine.js?v=202611121408';
+import { MATE_PUZZLES } from './chess-puzzles.js?v=202611121408';
 
 export const TYPES = {
   m1: { label: '1수 메이트', pts: 1, n: 1 },

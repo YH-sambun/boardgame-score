@@ -2,9 +2,9 @@
 
 가족 보드게임 점수 계산 + 전적 누적 웹앱. 홈 화면은 두 구역으로 나뉩니다.
 
-- **기록하기**(실물로 하고 점수만 입력): 스컬킹, 루미큐브, 요트다이스, 참새작, 셀레스티아, 다빈치 코드(+추리 도우미), 클루(추리 노트)
-- **바로 하기**(화면에서 직접 플레이): 요트다이스, 체스, 체스 퀴즈, 오목, 윷놀이
-  - 혼자면 컴퓨터와: 체스(5단계), 오목·윷놀이·요트다이스(쉬움·보통·어려움). 참가자를 1명만 고르면 컴퓨터가 상대로 들어가고, 계산은 모두 브라우저 안에서 합니다 (`js/games/*-ai.js`). 컴퓨터는 전적·레이팅·업적에서 빠집니다.
+- **기록하기**(실물로 하고 점수만 입력): 스컬킹, 루미큐브, 요트다이스, 참새작, 셀레스티아, 다빈치 코드(+추리 도우미), 클루(추리 노트), 체스(결과만)
+- **바로 하기**(화면에서 직접 플레이): 요트다이스, 체스(시계 선택), 체스 퀴즈, 오목, 윷놀이, 장기, 스도쿠, 차빼!
+  - 혼자면 컴퓨터와: 체스(5단계), 오목·윷놀이·요트다이스·장기(쉬움·보통·어려움). 참가자를 1명만 고르면 컴퓨터가 상대로 들어가고, 계산은 모두 브라우저 안에서 합니다 (`js/games/*-ai.js`). 컴퓨터는 전적·레이팅·업적에서 빠집니다.
 - **도구**: 선 뽑기(손가락·명단 룰렛), 타이머(모래시계·턴 시계), 주사위·코인·셀레스티아 위험 주사위
 - **전적**: 순위표, 상대 전적, 레이팅(Elo), 업적
 
@@ -42,7 +42,8 @@
   - 예전 위치(`users/{uid}/sessions`)의 기록은 로그인 시 자동으로 옮겨집니다.
   - 루미큐브 `data`: `{ rounds:[{ winner, left:[] }], current }` (`winner`: 승자 자리 번호, `left`: 각자 남은 타일 합)
   - 요트다이스 `data`: `{ scores:{ ones:[], twos:[], …, yacht:[] } }` (칸별로 참가자 순서 배열, 빈 칸은 null)
-  - 체스 `data`: `{ mode:'local'|'online'|'ai', white, moves:[uci], result:{ winner, reason }, level, seats:{ 자리: uid }, drawOffer, started, seq }`
+  - 체스 `data`: `{ mode:'local'|'online'|'ai'|'record', white, moves:[uci], result:{ winner, reason }, level, seats:{ 자리: uid }, drawOffer, started, seq, clockOpt, clock:{ base, inc, left:[ms], at, paused } }`
+    - 기록하기(`settings.mode:'record'`)는 `{ mode:'record', white, result, count }` 만 씀
   - 체스 퀴즈 `data`: `{ level(1~10, 0=직접), types:[종류], started, cur, problems:[{ type, grade, pts, limit, noHint, oneShot, fen, color, first, player, moves:[uci], status, hint, mistakes, points }] }`
   - 요트다이스 플레이 모드: `settings.mode:'play'`, `data.play:{ dice:[5], held:[5], rolls }` 추가, 컴퓨터 상대는 `settings.cpus:0~3, cpuLevel:0~2`
   - 컴퓨터 자리는 `players` 에 `{ id:'cpu', name:'컴퓨터' }` 로 들어갑니다
@@ -50,6 +51,9 @@
   - 다빈치 코드 `data`: `{ rounds:[{ order:[탈락 순서 자리], winner, streak3:[] }], current }`, 개인 노트 `{ me, joker, rows:{ [자리|'me']: [{ c:'b'|'w', v, not:[] }] }, memo }`
   - 오목 `data`: `{ moves:[칸 번호], winner, draw }`, `settings`: `{ renju, cpuSide:'black'|'white', cpuLevel:0~2 }`
   - 윷놀이 `data`: `{ pieces:[[{ pos, line, steps }]], turn, pending:[], canThrow, sticks, catches:[], caught:[], winner, log }`, `settings`: `{ pieces, backdo, cpus:1~3, cpuLevel:0~2 }`
+  - 장기 `data`: `{ moves:[from*100+to], winner, draw, reason }`, `settings`: `{ choSetup, hanSetup:'HEHE'|'EHEH'|'HEEH'|'EHHE', cpuSide:'c'|'h', cpuLevel }` (칸 번호 = y*9+x)
+  - 스도쿠 `data`: `{ level, daily, puzzle, solution, cells(81자), notes:{ 칸: 비트 }, mistakes, hints, elapsed, solved, gaveUp }`
+  - 차빼! `data`: `{ level, daily, start, min, cur(36자), hist:[], moves, hints, elapsed, solved, gaveUp }`. 문제는 `node tools/gen-carpark.mjs` 로 만든 `js/games/carpark-puzzles.js`
   - 참새작 `data`: `{ hands:[{ result:'win'|'draw'|null, winner, how:'ron'|'tsumo', from, sets:['shun'|'kou',…], dora, red, tanyao, chanta, yakuman, manual }], current }`
 
 전적(1등 횟수, 승률, 평균 점수, 최고 점수, 평균 등수), 상대 전적, 레이팅, 업적은 모두 완료된 `sessions` 로부터 계산하고 따로 저장하지 않습니다 (`js/stats.js`, `js/achievements.js`).
