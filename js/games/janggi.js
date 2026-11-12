@@ -2,9 +2,9 @@
 //  혼자 고르면 컴퓨터와 대국 (settings.cpuSide: 내 쪽 초/한, cpuLevel: 실력)
 //  상차림(마·상 자리)은 새 게임 화면에서 초·한 각각 고름
 // session.data = { moves:[from*100+to], winner:자리|null, draw:bool, reason }
-import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES } from './cpu.js?v=202611121408';
-import { replay, turnOf, legalMovesFrom, inCheck, gameOver, material, kingAt, xy, SETUPS, W, H } from './janggi-rules.js?v=202611121408';
-import { pickMove } from './janggi-ai.js?v=202611121408';
+import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES } from './cpu.js?v=202611121436';
+import { replay, turnOf, legalMovesFrom, inCheck, gameOver, material, kingAt, xy, SETUPS, W, H } from './janggi-rules.js?v=202611121436';
+import { pickMove } from './janggi-ai.js?v=202611121436';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const CHAR = {

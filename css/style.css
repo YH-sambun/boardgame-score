@@ -592,3 +592,6 @@ header details.dd[open] > summary{background:#2b3a4e}
 .cp-car.red span{box-shadow:inset 0 -4px 0 rgba(0,0,0,.2),0 0 0 2px #fff,0 2px 4px rgba(0,0,0,.35)}
 .cp-car.hinted span{outline:3px solid #f2c230;outline-offset:1px}
 .cp-lot.won .cp-car.red{transform:translateX(120%);opacity:0;transition:transform .7s ease-in,opacity .7s .3s}
+.play-top .back{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin-right:4px;border-radius:8px;text-decoration:none;color:var(--ink);font-size:26px;line-height:1;background:var(--chip)}
+.result-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.result-actions .btn{text-decoration:none;flex:1;text-align:center;min-width:90px}

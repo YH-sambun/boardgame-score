@@ -1,10 +1,10 @@
-import { store } from './store.js?v=202611121408';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121408';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121408';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121408';
-import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121408';
-import { viewTools } from './tools.js?v=202611121408';
-import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611121408';
+import { store } from './store.js?v=202611121436';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121436';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121436';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121436';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121436';
+import { viewTools } from './tools.js?v=202611121436';
+import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611121436';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -246,8 +246,9 @@ async function viewPlay(id) {
   if (!s) return viewNotFound();
   const g = await loadGame(s.gameId);
   if (!g) return viewNotFound();
+  const backHref = `#/games/${sessionMode(s) || 'play'}`; // 이 게임이 있는 목록(직접 플레이 / 점수 기록)
   $app.innerHTML = `<div class="play-top">
-      <h2>${gameIcon(g, 'sm')} ${g.name}${g.modes.length > 1 ? ` <span class="tag">${MODE_NAME[sessionMode(s)]}</span>` : ''} <span class="muted">${fmtDate(s.createdAt)}</span></h2>
+      <h2><a class="back" href="${backHref}" aria-label="게임 목록으로">‹</a>${gameIcon(g, 'sm')} ${g.name}${g.modes.length > 1 ? ` <span class="tag">${MODE_NAME[sessionMode(s)]}</span>` : ''} <span class="muted">${fmtDate(s.createdAt)}</span></h2>
       <div class="actions">
         ${s.shared ? `<span class="badge shared">${esc(s.ownerName || '다른 계정')}님이 공유</span>` : ''}
         ${menuHtml([
@@ -264,7 +265,25 @@ async function viewPlay(id) {
     if (s.status !== 'finished') { box.innerHTML = ''; return; }
     const rk = ranks(s.totals);
     const order = s.players.map((p, i) => ({ name: p.name, total: s.totals[i], rank: rk[i] })).sort((a, b) => a.rank - b.rank);
-    box.innerHTML = `<section class="card result"><h3>최종 결과</h3><ol class="podium">${order.map((o) => `<li><span class="rk ${o.rank === 1 ? 'first' : ''}">${g.totalLabel && o.rank !== 1 ? '' : o.rank + '위'}</span>${esc(o.name)}<b>${g.totalLabel ? g.totalLabel(o.total) : o.total + '점'}</b></li>`).join('')}</ol></section>`;
+    box.innerHTML = `<section class="card result"><h3>최종 결과</h3><ol class="podium">${order.map((o) => `<li><span class="rk ${o.rank === 1 ? 'first' : ''}">${g.totalLabel && o.rank !== 1 ? '' : o.rank + '위'}</span>${esc(o.name)}<b>${g.totalLabel ? g.totalLabel(o.total) : o.total + '점'}</b></li>`).join('')}</ol>
+      <div class="result-actions">
+        ${!s.shared ? '<button type="button" class="btn primary" data-again>한 판 더</button>' : ''}
+        <a class="btn" href="${backHref}">게임 목록</a>
+        <a class="btn" href="#/">처음 화면</a>
+      </div></section>`;
+    const again = box.querySelector('[data-again]');
+    if (again) again.onclick = async () => {
+      // 같은 사람·같은 설정으로 새 판 (오늘의 문제는 새 문제로)
+      again.disabled = true;
+      const now = Date.now();
+      const settings = { ...(s.settings || {}) };
+      if (settings.daily) settings.daily = false;
+      const n = { gameId: g.id, players: s.players, playerIds: s.playerIds || s.players.map((p) => p.id), settings, status: 'playing', createdAt: now, updatedAt: now };
+      n.data = g.initData(n.players, n.settings);
+      n.totals = g.computeTotals(n);
+      try { const created = await store.createSession(n); location.hash = `#/play/${created.id}`; }
+      catch (err) { console.error(err); toast('새 판을 만들지 못했어요: ' + err.message); again.disabled = false; }
+    };
   };
 
   const persist = debounce(async () => {
