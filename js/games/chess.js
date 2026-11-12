@@ -4,7 +4,7 @@
 //  - 컴퓨터: 참가자를 1명만 고르면 컴퓨터와 대국 (실력 5단계)
 // session.data = { mode, white(백을 잡은 자리), moves:[uci], result:{ winner:자리|null, reason }, level, seats:{자리:uid}, drawOffer, seq }
 // 전적: 이김 1, 비김 0.5, 짐 -1 (진행 중 0)
-import { Chess, createBoard, engine, gameOverInfo, moveListHtml, uciObj } from './chess-board.js?v=202611121007';
+import { Chess, createBoard, engine, gameOverInfo, moveListHtml, uciObj } from './chess-board.js?v=202611121017';
 
 export const CPU_ID = 'cpu';
 export const LEVELS = [

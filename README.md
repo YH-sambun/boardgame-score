@@ -35,7 +35,7 @@
   - 루미큐브 `data`: `{ rounds:[{ winner, left:[] }], current }` (`winner`: 승자 자리 번호, `left`: 각자 남은 타일 합)
   - 요트다이스 `data`: `{ scores:{ ones:[], twos:[], …, yacht:[] } }` (칸별로 참가자 순서 배열, 빈 칸은 null)
   - 체스 `data`: `{ mode:'local'|'online'|'ai', white, moves:[uci], result:{ winner, reason }, level, seats:{ 자리: uid }, drawOffer, started, seq }`
-  - 체스 퀴즈 `data`: `{ types:[종류], started, cur, problems:[{ type, fen, color, first, player, moves:[uci], status, hint, mistakes, points }] }`
+  - 체스 퀴즈 `data`: `{ level(1~10, 0=직접), types:[종류], started, cur, problems:[{ type, grade, pts, limit, noHint, oneShot, fen, color, first, player, moves:[uci], status, hint, mistakes, points }] }`
   - 참새작 `data`: `{ hands:[{ result:'win'|'draw'|null, winner, how:'ron'|'tsumo', from, sets:['shun'|'kou',…], dora, red, tanyao, chanta, yakuman, manual }], current }`
 
 전적(1등 횟수, 승률, 평균 점수, 최고 점수, 평균 등수)은 완료된 `sessions` 로부터 계산합니다.
@@ -126,6 +126,22 @@
 | 퀸으로 몰아 잡기 | 2 | 킹+퀸으로 킹만 남은 컴퓨터를 15수 안에 메이트 |
 | 룩으로 몰아 잡기 | 3 | 킹+룩으로 25수 안에 |
 | 비숍 둘로 몰아 잡기 | 5 | 킹+비숍 둘로 40수 안에 |
+
+### 난이도 10단계 (또는 '직접 고르기'로 위 종류를 마음대로 섞기)
+| 단계 | 나오는 문제 | 문제당 점수 |
+|---|---|---|
+| 1 입문 | 쉬운 1수 메이트 | 1 |
+| 2 초급 | 1수 메이트, 퀸 25수 | 1 |
+| 3 초중급 | 헷갈리는 1수 메이트, 쉬운 2수 메이트, 퀸 20수 | 2 |
+| 4 중급 | 쉬운 2수 메이트, 퀸 15수, 룩 35수 | 2 |
+| 5 중상급 | 2수 메이트, 룩 30수 | 3 |
+| 6 상급 | 조용한 첫 수 2수 메이트, 쉬운 3수 메이트, 룩 25수 | 3 |
+| 7 고급 | 3수 메이트, 룩 20수 | 4 |
+| 8 고수 | 조용한 첫 수 3수 메이트, 비숍 둘 50수 | 5 |
+| 9 마스터 | 조용한 첫 수 2·3수 메이트, 비숍 둘 40수, 힌트 없음 | 6 |
+| 10 그랜드마스터 | 조용한 첫 수 3수 메이트, 비숍 둘 35수, 힌트 없음, 한 번 틀리면 실패 | 8 |
+
+퍼즐의 '쉬운 편/어려운 편'은 1수 메이트는 체크할 수 있는 수가 4개 이상이면 어려운 편, 2·3수 메이트는 첫 수가 체크가 아닌 조용한 수면 어려운 편으로 나눕니다.
 
 - 힌트를 쓰거나 틀린 수를 두면 그 문제 점수는 절반(내림). 스테일메이트나 기물을 빼앗기면 실패.
 - 메이트 퍼즐은 `tools/gen-puzzles.mjs` 로 엔진끼리 둔 대국에서 골라낸 장면이고(`js/games/chess-puzzles.js`), 절반은 색을 바꿔 흑 차례 문제로 나옵니다. 몰아 잡기는 매번 새로 무작위 배치합니다.

@@ -27,7 +27,14 @@ function consider(pos) {
   if (!dist || found[dist].length >= target[dist]) return;
   const sol = mateMoves(fen, dist);
   if (sol.length !== 1) return;
-  found[dist].push([key, sol[0]]);
+  // 난이도: 0 쉬운 편 / 1 어려운 편 (1수: 체크할 수 있는 수가 4개 이상, 2·3수: 첫 수가 체크가 아님)
+  let hard;
+  if (dist === 1) {
+    let checks = 0;
+    for (const m of p.legal()) { p.make(m); if (p.inCheck()) checks++; p.unmake(); }
+    hard = checks >= 4 ? 1 : 0;
+  } else { p.make(p.findUci(sol[0])); hard = p.inCheck() ? 0 : 1; p.unmake(); }
+  found[dist].push([key, sol[0], hard]);
 }
 
 while (Object.keys(target).some((n) => found[n].length < target[n]) && Date.now() - start < LIMIT) {
@@ -54,8 +61,8 @@ while (Object.keys(target).some((n) => found[n].length < target[n]) && Date.now(
 
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const header = `// 체스 퀴즈 문제 모음 — tools/gen-puzzles.mjs 로 생성 (엔진끼리 둔 대국에서 골라낸 장면, 외부 출처 없음)
-// [FEN(백 차례, 판과 차례만), 유일한 첫 수(uci)]. 앱에서는 절반 정도를 색을 바꿔(흑 차례로) 보여 줍니다.
+// [FEN(백 차례, 판과 차례만), 유일한 첫 수(uci), 난이도(0 쉬운 편 / 1 어려운 편: 1수는 체크할 수 있는 수가 4개 이상, 2·3수는 첫 수가 체크가 아님)]. 앱에서는 절반 정도를 색을 바꿔(흑 차례로) 보여 줍니다.
 `;
-const body = Object.entries(found).map(([n, list]) => `  ${n}: [\n${shuffle(list).map(([f, m]) => `    ['${f}', '${m}'],`).join('\n')}\n  ],`).join('\n');
+const body = Object.entries(found).map(([n, list]) => `  ${n}: [\n${shuffle(list).map(([f, m, h]) => `    ['${f}', '${m}', ${h}],`).join('\n')}\n  ],`).join('\n');
 writeFileSync(new URL('../js/games/chess-puzzles.js', import.meta.url), `${header}export const MATE_PUZZLES = {\n${body}\n};\n`);
 console.log('done', games, found[1].length, found[2].length, found[3].length);
