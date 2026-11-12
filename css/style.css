@@ -374,3 +374,32 @@ table.h2h td.self{background:var(--chip)}
 .coin{display:flex;align-items:center;justify-content:center;width:96px;height:96px;margin:8px auto;border-radius:50%;border:3px solid #9a7b2c;background:#e6c768;color:#5b4512;font-size:28px;font-weight:800;cursor:pointer}
 .coin.c-t{background:#c9ccd1;border-color:#80868f;color:#3b4048}
 .coin.rolling{transform:scaleX(.2)}
+/* 셀레스티아 */
+.cel-row .cel-in{display:flex;gap:8px;align-items:center}
+.cel-row .bonus-box{flex:1;max-width:160px}
+.cel-row .chip{margin-left:auto}
+@media (min-width:600px){.prow.cel-row{grid-template-columns:130px 1fr}}
+/* 다빈치 코드 */
+.dv-order{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:10px 0}
+.dv-p{display:grid;grid-template-columns:1fr auto;gap:2px 8px;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);cursor:pointer;font:inherit}
+.dv-p small{grid-column:1;color:var(--muted)}
+.dv-p .dv-pts{grid-row:1;grid-column:2;font-weight:800;color:var(--pos)}
+.dv-p .muted{grid-column:2;text-align:right}
+.dv-p.out{background:var(--chip);opacity:.75}
+.dv-p.out b{text-decoration:line-through}
+.dv-p.win{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset;opacity:1}
+.dv-row{border-top:1px solid var(--line);padding:10px 0}
+.dv-row-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.dv-row-h .btn{margin-left:4px}
+.dv-tiles{display:flex;flex-wrap:wrap;gap:6px}
+.dv-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:46px;height:62px;padding:2px 4px;border-radius:7px;border:2px solid #222;cursor:pointer;font:inherit}
+.dv-tile.b{background:#222;color:#fff}
+.dv-tile.w{background:#fafaf7;color:#222}
+.dv-tile b{font-size:22px;line-height:1}
+.dv-tile small{font-size:10px;margin-top:3px;opacity:.85;white-space:nowrap}
+.dv-tile.open{border-style:dashed}
+.dv-tile.sel{outline:3px solid var(--accent);outline-offset:2px}
+.dv-tile.bad{outline:3px solid var(--neg)}
+.dv-panel{margin-top:10px;padding:10px;border-radius:12px;background:var(--hi)}
+.dv-panel .row-btns{flex-wrap:wrap}.dv-panel .row-btns .btn{flex:1 1 30%}
+.key.no{background:var(--neg);border-color:var(--neg)}

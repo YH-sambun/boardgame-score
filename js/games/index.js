@@ -10,6 +10,8 @@ export const GAME_META = [
   { id: 'rummikub', name: '루미큐브', modes: ['record'], color: '#b8452f', load: () => import('./rummikub.js?v=202611121017') },
   { id: 'yacht', name: '요트다이스', modes: ['record', 'play'], color: '#2f6f9f', load: () => import('./yacht.js?v=202611121017') },
   { id: 'sparrow', name: '참새작', modes: ['record'], color: '#3d7a4a', load: () => import('./sparrow.js?v=202611121017') },
+  { id: 'celestia', name: '셀레스티아', modes: ['record'], color: '#4a78b5', load: () => import('./celestia.js?v=202611121017') },
+  { id: 'davinci', name: '다빈치 코드', modes: ['record'], color: '#2b2b2b', load: () => import('./davinci.js?v=202611121017') },
   { id: 'clue', name: '클루', modes: ['record'], color: '#7a4b8c', load: () => import('./clue.js?v=202611121017') },
   { id: 'chess', name: '체스', modes: ['play'], color: '#6b4f2a', tieIsNoWin: true, load: () => import('./chess.js?v=202611121017') },
   { id: 'chessquiz', name: '체스 퀴즈', modes: ['play'], color: '#8a6d3b', load: () => import('./chessquiz.js?v=202611121017') },
