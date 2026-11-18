@@ -7,7 +7,7 @@
 //        멍텅구리 구사(4·9 둘 다 열끗) — 가장 높은 상대가 장땡 이하면 재경기, 아니면 3끗
 //  진행: 한 장씩 받고 베팅 → 한 장 더 받고 베팅 → 결과 (재경기면 판돈은 다음 판으로)
 
-import { makePokerGame } from './poker-core.js?v=202611180618';
+import { makePokerGame } from './poker-core.js?v=202611180627';
 
 const GWANG = [1, 3, 8];
 const YEOL = [4, 7, 9];
