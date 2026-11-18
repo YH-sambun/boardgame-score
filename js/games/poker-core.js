@@ -10,7 +10,7 @@
 //  steps: [{ deal:[앞면?…] } | { board:n } | { bet:true }] 를 차례대로 진행
 //  data = { chips:[], no, dealer, carry, h:{ 이번 판 }, log:[] }
 
-import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES, wait } from './cpu.js?v=202611180606';
+import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES, wait } from './cpu.js?v=202611180618';
 
 export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export function shuffle(a) {
@@ -165,7 +165,7 @@ export function makePokerGame(spec) {
     d.no = (d.no || 0) + 1;
     d.dealer = nextSeat(n, d.dealer ?? -1, (j) => d.chips[j] > 0);
     const h = {
-      deck: shuffle(spec.deck()), cards: players.map(() => []), board: [],
+      deck: shuffle(spec.deck()), cards: players.map(() => ({ cs: [] })), board: [], // Firestore 는 배열 속 배열을 못 저장해서 자리마다 { cs:[카드] }
       folded: d.chips.map((c) => c <= 0), out: d.chips.map((c) => c <= 0),
       st: [...d.chips], put: Array(n).fill(0), bet: Array(n).fill(0), last: Array(n).fill(''),
       step: -1, toAct: -1, cur: 0, raises: 0, acted: [], phase: 'bet', show: false, res: null,
@@ -185,7 +185,7 @@ export function makePokerGame(spec) {
       h.step++;
       const st = steps[h.step];
       if (!st) return showdown(d, players, settings);
-      if (st.deal) for (const up of st.deal) for (const i of alive(h)) h.cards[i].push({ c: h.deck.pop(), up });
+      if (st.deal) for (const up of st.deal) for (const i of alive(h)) h.cards[i].cs.push({ c: h.deck.pop(), up });
       if (st.board) for (let k = 0; k < st.board; k++) h.board.push(h.deck.pop());
       if (!st.bet) continue;
       h.bet = h.bet.map(() => 0); h.cur = 0; h.raises = 0; h.acted = [];
@@ -223,7 +223,7 @@ export function makePokerGame(spec) {
     const name = players[i].name;
     if (o.kind === 'fold') {
       h.folded[i] = true; h.last[i] = '다이';
-      const pen = spec.foldPenalty ? Math.min(d.chips[i], spec.foldPenalty(h.cards[i].map((x) => x.c), Number(settings.ante) || 2)) : 0;
+      const pen = spec.foldPenalty ? Math.min(d.chips[i], spec.foldPenalty(h.cards[i].cs.map((x) => x.c), Number(settings.ante) || 2)) : 0;
       if (pen > 0) { d.chips[i] -= pen; h.pot += pen; h.last[i] = `다이 (벌칙 ${pen})`; }
       h.msg = `${name} 다이${pen > 0 ? ` · 10을 들고 죽어서 벌칙 ${pen}칩` : ''}`;
     } else {
@@ -249,7 +249,7 @@ export function makePokerGame(spec) {
       res = { winners: live, names: {}, byFold: true };
     } else {
       h.show = true;
-      res = spec.resolve(live.map((i) => ({ i, cards: h.cards[i].map((x) => x.c) })), h.board);
+      res = spec.resolve(live.map((i) => ({ i, cards: h.cards[i].cs.map((x) => x.c) })), h.board);
     }
     h.res = res;
     if (res.redeal) {
@@ -290,7 +290,7 @@ export function makePokerGame(spec) {
     const known = new Set(h.board.map(spec.key));
     const mine = [];
     const theirs = h.cards.map(() => []);
-    h.cards.forEach((cs, j) => cs.forEach((x) => {
+    h.cards.forEach((o, j) => o.cs.forEach((x) => {
       const sees = j === seat ? !spec.indian || x.up : x.up || spec.indian;
       if (!sees) return;
       known.add(spec.key(x.c));
@@ -383,6 +383,8 @@ export function makePokerGame(spec) {
       let viewer = single ? humans[0] : null; // 지금 화면을 보는 사람 (여럿이면 차례마다 '카드 보기')
       let busy = false;
 
+      // 예전 형식(배열 속 배열)으로 남은 판은 바꿔 둠
+      if (d.h && Array.isArray(d.h.cards?.[0])) d.h.cards = d.h.cards.map((cs) => ({ cs }));
       if (!readonly && !d.h) { startHand(d, players, settings); ctx.save(); }
 
       const sees = (seat, x) => {
@@ -398,13 +400,13 @@ export function makePokerGame(spec) {
         const win = h.phase === 'done' && h.res && !h.res.redeal && h.res.winners.includes(i);
         const cls = ['pk-seat', mine && 'pk-mine', h.toAct === i && h.phase === 'bet' && 'turn', h.folded[i] && 'fold', h.out[i] && 'out', win && 'win'].filter(Boolean).join(' ');
         // 공개 카드가 섞이는 게임(세븐 포커)은 나만 보는 카드를 살짝 띄워 구분
-        const lift = (x) => !x.up && h.cards[i].some((y) => y.up) && h.phase === 'bet';
-        const cards = h.cards[i].map((x) => (sees(i, x) ? (lift(x) ? spec.cardHtml(x.c).replace('pk-card', 'pk-card own') : spec.cardHtml(x.c)) : BACK)).join('');
+        const lift = (x) => !x.up && h.cards[i].cs.some((y) => y.up) && h.phase === 'bet';
+        const cards = h.cards[i].cs.map((x) => (sees(i, x) ? (lift(x) ? spec.cardHtml(x.c).replace('pk-card', 'pk-card own') : spec.cardHtml(x.c)) : BACK)).join('');
         let st = esc(h.out[i] ? '탈락' : h.last[i]);
         if (h.phase === 'done' && h.show && !h.folded[i] && h.res?.names?.[i]) st = `${win ? '<b>승</b> ' : ''}${esc(h.res.names[i])}`;
         else if (win) st = '<b>승</b>';
         else if (mine && !h.folded[i] && spec.describe) {
-          const vis = h.cards[i].filter((x) => sees(i, x)).map((x) => x.c);
+          const vis = h.cards[i].cs.filter((x) => sees(i, x)).map((x) => x.c);
           const nm = vis.length ? spec.describe(vis, h.board) : '';
           if (nm) st = `${st ? `${st} · ` : ''}지금 <b>${esc(nm)}</b>`;
         }
