@@ -1,7 +1,7 @@
 // 업적: 완료된 게임 기록으로 자동 계산 (따로 저장하지 않음)
 //  각 업적의 test(entries) 는 그 사람의 참가 기록(오래된 순)을 받아, 달성한 시각(ms) 또는 null 을 돌려줌
 //  entry = { s: 세션, i: 그 사람 자리, rank, n: 인원, win, draw, t: 끝난 시각 }
-import { rankedSessions, seats } from './stats.js?v=202611121529';
+import { rankedSessions, seats } from './stats.js?v=202611180559';
 
 const sum = (xs) => xs.reduce((a, b) => a + (b || 0), 0);
 const wins = (es) => es.filter((e) => e.win && e.n >= 2);
@@ -47,9 +47,9 @@ export const ACHIEVEMENTS = [
   // 스도쿠
   { id: 'sd-clean', game: 'sudoku', mark: '수', name: '깔끔한 풀이', desc: '스도쿠 "어려움" 이상을 실수·힌트 없이 풀기', test: (es) => nth(of('sudoku')(es), 1, (e) => e.s.data.solved && e.s.data.level >= 2 && !e.s.data.mistakes && !e.s.data.hints) },
   { id: 'sd-10', game: 'sudoku', mark: '10', name: '스도쿠 10판', desc: '스도쿠 10번 풀기', test: (es) => nth(of('sudoku')(es), 10, (e) => e.s.data.solved) },
-  // 차빼!
-  { id: 'cp-perfect', game: 'carpark', mark: '최', name: '최단 거리', desc: '차빼! "상급" 이상을 최소 이동 수로 풀기', test: (es) => nth(of('carpark')(es), 1, (e) => e.s.data.solved && e.s.data.level >= 3 && e.s.data.moves <= e.s.data.min && !e.s.data.hints) },
-  { id: 'cp-master', game: 'carpark', mark: '왕', name: '주차의 달인', desc: '차빼! "마스터" 풀기', test: (es) => nth(of('carpark')(es), 1, (e) => e.s.data.solved && e.s.data.level >= 5) },
+  // 러시아 워
+  { id: 'cp-perfect', game: 'carpark', mark: '최', name: '최단 거리', desc: '러시아 워 "상급" 이상을 최소 이동 수로 풀기', test: (es) => nth(of('carpark')(es), 1, (e) => e.s.data.solved && e.s.data.level >= 3 && e.s.data.moves <= e.s.data.min && !e.s.data.hints) },
+  { id: 'cp-master', game: 'carpark', mark: '왕', name: '주차의 달인', desc: '러시아 워 "마스터" 풀기', test: (es) => nth(of('carpark')(es), 1, (e) => e.s.data.solved && e.s.data.level >= 5) },
   // 윷놀이
   { id: 'yt-clean', game: 'yut', mark: '무', name: '무사귀환', desc: '한 번도 안 잡히고 승리', test: (es) => nth(of('yut')(es), 1, (e) => e.win && !(e.s.data.caught?.[e.i])) },
   { id: 'yt-hunter', game: 'yut', mark: '잡', name: '사냥꾼', desc: '한 게임에서 상대 말 3번 잡기', test: (es) => nth(of('yut')(es), 1, (e) => (e.s.data.catches?.[e.i] || 0) >= 3) },
