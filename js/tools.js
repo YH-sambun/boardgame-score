@@ -1,5 +1,5 @@
 // 도구: 선 뽑기 · 타이머 · 주사위/코인. 모두 이 기기 안에서만 동작하고 저장하지 않음
-import { selectHtml } from './ui.js?v=202611180559';
+import { selectHtml } from './ui.js?v=202611180606';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rand = (n) => Math.floor(Math.random() * n);
 // 도구 목록: 첫 화면은 큰 버튼만, 누르면 그 도구 하나만 보여 줌

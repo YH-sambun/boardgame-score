@@ -10,7 +10,7 @@
 //  steps: [{ deal:[앞면?…] } | { board:n } | { bet:true }] 를 차례대로 진행
 //  data = { chips:[], no, dealer, carry, h:{ 이번 판 }, log:[] }
 
-import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES, wait } from './cpu.js?v=202611121529';
+import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES, wait } from './cpu.js?v=202611180606';
 
 export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export function shuffle(a) {
@@ -124,7 +124,7 @@ const CSS = `
 .pk-cover{text-align:center;padding:4px 0}
 .pk-cover p{margin:4px 0 8px}
 .pk-log{font-size:12px;color:var(--muted);margin:6px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-@media (min-width:1100px){.pk{max-width:900px;margin:12px auto}}
+@media (min-width:900px){.pk{max-width:900px;margin-left:auto!important;margin-right:auto!important}}
 html.work .pk{--felt:#f2f2f2;--felt-ink:#222}
 html.work .pk-seat{background:#fff;border:1px solid #ccc;border-radius:4px}
 html.work .pk-seat.turn{border:2px solid #222}
