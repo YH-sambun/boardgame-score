@@ -1,7 +1,7 @@
 // 인디언 포커 — 1~10 카드 두 벌(20장). 한 장씩 받아 이마에 붙이듯, 남의 카드는 보이고 내 카드만 안 보임
 //  한 번 베팅한 뒤 숫자가 가장 큰 사람이 판돈을 가져감. 10을 들고 다이하면 기본 판돈 ×5 벌칙(판돈에 들어감)
 
-import { makePokerGame } from './poker-core.js?v=202611180640';
+import { makePokerGame } from './poker-core.js?v=202611180813';
 
 const deck = () => Array.from({ length: 10 }, (_, k) => k + 1).flatMap((n) => [{ n, c: 0 }, { n, c: 1 }]);
 const key = (x) => `${x.n}-${x.c}`;

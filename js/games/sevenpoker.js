@@ -2,7 +2,7 @@
 //  진행: 4장(2장 숨김 + 2장 공개) 받고 베팅 → 5구(공개) 베팅 → 6구(공개) 베팅 → 히든(숨김) 베팅 → 결과
 //  족보: 로열 스트레이트 플러시 > 스트레이트 플러시 > 포카드 > 풀하우스 > 플러시 > 마운틴 > 백스트레이트 > 스트레이트 > 트리플 > 투페어 > 원페어 > 탑
 
-import { makePokerGame, pokerDeck, pokerKey, pokerCardHtml, evalPoker, resolveByValue } from './poker-core.js?v=202611180640';
+import { makePokerGame, pokerDeck, pokerKey, pokerCardHtml, evalPoker, resolveByValue } from './poker-core.js?v=202611180813';
 
 const val = (cs) => evalPoker(cs, { backHigh: true });
 
