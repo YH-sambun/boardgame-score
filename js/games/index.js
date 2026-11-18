@@ -37,6 +37,14 @@ const CP_ICON = '<svg class="gicon" viewBox="0 0 32 32" aria-hidden="true">'
   + '<path d="M30 12v8" stroke="#f2c230" stroke-width="3"/>'
   + '</svg>';
 
+// 섯다: 화투 두 장(3광·8광)
+const ST_ICON = '<svg class="gicon" viewBox="0 0 32 32" aria-hidden="true">'
+  + '<rect x="3" y="6" width="14" height="21" rx="2.5" fill="#b8322a" stroke="#f4efe2" stroke-width="1.5" transform="rotate(-10 10 16)"/>'
+  + '<rect x="14" y="4" width="14" height="21" rx="2.5" fill="#b8322a" stroke="#f4efe2" stroke-width="1.5" transform="rotate(8 21 14)"/>'
+  + '<text x="9.5" y="21" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="sans-serif" transform="rotate(-10 10 16)">3</text>'
+  + '<text x="21" y="18.5" text-anchor="middle" font-size="9" font-weight="800" fill="#f6d04d" font-family="sans-serif" transform="rotate(8 21 14)">8</text>'
+  + '</svg>';
+
 export const GAME_META = [
   { id: 'skullking', name: '스컬킹', icon: '🏴‍☠️', modes: ['record'], color: '#3b3f4a', load: () => import('./skullking.js?v=202611121529') },
   { id: 'rummikub', name: '루미큐브', icon: RK_ICON, modes: ['record'], color: '#b8452f', load: () => import('./rummikub.js?v=202611121529') },
@@ -52,6 +60,10 @@ export const GAME_META = [
   { id: 'janggi', name: '장기', icon: JG_ICON, modes: ['play'], color: '#1f5fa8', tieIsNoWin: true, load: () => import('./janggi.js?v=202611121529') },
   { id: 'sudoku', name: '스도쿠', icon: SD_ICON, modes: ['play'], color: '#1d2a3a', load: () => import('./sudoku.js?v=202611121529') },
   { id: 'carpark', name: '차빼!', icon: CP_ICON, modes: ['play'], color: '#c62f28', load: () => import('./carpark.js?v=202611121529') },
+  { id: 'seotda', name: '섯다', icon: ST_ICON, modes: ['play'], color: '#b8322a', load: () => import('./seotda.js?v=202611121529') },
+  { id: 'indianpoker', name: '인디언 포커', icon: '🪶', modes: ['play'], color: '#8a5a2b', load: () => import('./indianpoker.js?v=202611121529') },
+  { id: 'sevenpoker', name: '세븐 포커', icon: '🃏', modes: ['play'], color: '#2f6b4f', load: () => import('./sevenpoker.js?v=202611121529') },
+  { id: 'holdem', name: '텍사스 홀덤', icon: '♠️', mark: '홀', modes: ['play'], color: '#1f4a37', load: () => import('./holdem.js?v=202611121529') },
 ];
 
 const loaded = new Map();
