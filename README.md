@@ -3,7 +3,8 @@
 가족 보드게임 점수 계산 + 전적 누적 웹앱. 홈 화면은 두 구역으로 나뉩니다.
 
 - **기록하기**(실물로 하고 점수만 입력): 스컬킹, 루미큐브, 요트다이스, 참새작, 셀레스티아, 다빈치 코드(+추리 도우미), 클루(추리 노트), 체스(결과만)
-- **바로 하기**(화면에서 직접 플레이): 요트다이스, 체스(시계 선택), 체스 퀴즈, 오목, 윷놀이, 장기, 스도쿠, 러시아 워
+- **바로 하기**(화면에서 직접 플레이): 요트다이스, 체스(시계 선택), 체스 퀴즈, 오목, 윷놀이, 장기, 스도쿠, 러시아 워, 섯다, 인디언 포커, 세븐 포커, 텍사스 홀덤
+  - 섯다·포커는 돈 대신 칩으로만 하고, 끝났을 때 남은 칩이 점수(전적에 누적). 혼자면 컴퓨터 1~4명과, 여럿이면 한 기기를 돌려 가며(차례마다 '카드 보기')
   - 혼자면 컴퓨터와: 체스(5단계), 오목·윷놀이·요트다이스·장기(쉬움·보통·어려움). 참가자를 1명만 고르면 컴퓨터가 상대로 들어가고, 계산은 모두 브라우저 안에서 합니다 (`js/games/*-ai.js`). 컴퓨터는 전적·레이팅·업적에서 빠집니다.
 - **도구**: 선 뽑기(손가락·명단 룰렛), 타이머(모래시계·턴 시계), 주사위·코인·셀레스티아 위험 주사위
 - **전적**: 순위표, 상대 전적, 레이팅(Elo), 업적
@@ -60,6 +61,7 @@
   - 장기 `data`: `{ moves:[from*100+to], winner, draw, reason }`, `settings`: `{ choSetup, hanSetup:'HEHE'|'EHEH'|'HEEH'|'EHHE', cpuSide:'c'|'h', cpuLevel }` (칸 번호 = y*9+x)
   - 스도쿠 `data`: `{ level, daily, puzzle, solution, cells(81자), notes:{ 칸: 비트 }, mistakes, hints, elapsed, solved, gaveUp }`
   - 러시아 워 `data`: `{ level, daily, start, min, cur(36자), hist:[], moves, hints, elapsed, solved, gaveUp }`. 문제는 `node tools/gen-carpark.mjs` 로 만든 `js/games/carpark-puzzles.js`
+  - 섯다·인디언 포커·세븐 포커·텍사스 홀덤 `data`: `{ chips:[], no(판 번호), dealer, carry(재경기로 넘어간 판돈), h:{ deck, cards:[[{ c, up }]], board, folded, put, bet, st(판 시작 칩), step, toAct, cur, raises, phase:'bet'|'done', res, pot, msg }, log }`, `settings`: `{ cpus, cpuLevel, chips, ante, hands }`. 공통 엔진은 `js/games/poker-core.js` (사이드 팟 대신 한 판에 낼 수 있는 칩을 가장 적게 가지고 시작한 사람의 칩까지로 묶음)
   - 참새작 `data`: `{ hands:[{ result:'win'|'draw'|null, winner, how:'ron'|'tsumo', from, sets:['shun'|'kou',…], dora, red, tanyao, chanta, yakuman, manual }], current }`
 
 전적(1등 횟수, 승률, 평균 점수, 최고 점수, 평균 등수), 상대 전적, 레이팅, 업적은 모두 완료된 `sessions` 로부터 계산하고 따로 저장하지 않습니다 (`js/stats.js`, `js/achievements.js`).
