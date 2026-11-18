@@ -2,7 +2,7 @@
 //  진행: 2장 받고 베팅(프리플랍) → 바닥 3장(플랍) 베팅 → 1장(턴) 베팅 → 1장(리버) 베팅 → 결과
 //  블라인드 대신 모두 같은 기본 판돈(앤티)을 냄. 백스트레이트(A-2-3-4-5)는 가장 낮은 스트레이트
 
-import { makePokerGame, pokerDeck, pokerKey, pokerCardHtml, evalPoker, resolveByValue } from './poker-core.js?v=202611180613';
+import { makePokerGame, pokerDeck, pokerKey, pokerCardHtml, evalPoker, resolveByValue } from './poker-core.js?v=202611180627';
 
 export default makePokerGame({
   id: 'holdem',
