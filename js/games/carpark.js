@@ -1,9 +1,9 @@
-// 차빼!: 6×6 주차장에서 차를 앞뒤로 밀어 빨간 차를 오른쪽 출구로 빼내는 혼자 하는 퍼즐
+// 러시아 워: 6×6 주차장에서 차를 앞뒤로 밀어 빨간 차를 오른쪽 출구로 빼내는 혼자 하는 퍼즐
 //  문제는 tools/gen-carpark.mjs 로 미리 만들어 둔 것(최소 이동 수를 계산해 단계별로 나눔)에서 고름
 //  '오늘의 문제'는 날짜로 정해진 같은 문제
 // session.data = { level, daily, start, min, cur, hist:[이전 상태], moves, hints, elapsed, solved, gaveUp }
-import { PUZZLES } from './carpark-puzzles.js?v=202611121529';
-import { vehicles, range, slide, solved, solve, N, EXIT_ROW } from './carpark-solver.js?v=202611121529';
+import { PUZZLES } from './carpark-puzzles.js?v=202611180559';
+import { vehicles, range, slide, solved, solve, N, EXIT_ROW } from './carpark-solver.js?v=202611180559';
 
 export const LEVELS = [
   { name: '입문', pts: 50 },
@@ -34,7 +34,7 @@ export const scoreOf = (d) => {
 
 export default {
   id: 'carpark',
-  name: '차빼!',
+  name: '러시아 워',
   guide: {
     players: '1명', time: '1~15분',
     intro: '꽉 막힌 주차장에서 다른 차들을 앞뒤로 밀어 빨간 차를 오른쪽 출구로 빼내는 퍼즐이에요. 단계마다 가장 적은 이동 수가 정해져 있어요.',

@@ -125,6 +125,17 @@ const CSS = `
 .pk-cover p{margin:4px 0 8px}
 .pk-log{font-size:12px;color:var(--muted);margin:6px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (min-width:1100px){.pk{max-width:900px;margin:12px auto}}
+html.work .pk{--felt:#f2f2f2;--felt-ink:#222}
+html.work .pk-seat{background:#fff;border:1px solid #ccc;border-radius:4px}
+html.work .pk-seat.turn{border:2px solid #222}
+html.work .pk-seat.win{background:#e4e4e4}
+html.work .pk-mine{background:#fafafa}
+html.work .pk-table{border:1px solid #ccc;border-radius:4px}
+html.work .pk-card{box-shadow:none;border:1px solid #999;border-radius:3px}
+html.work .pk-card.back{background:#bbb;border:1px solid #888}
+html.work .pk-card.hw{background:#555;border-color:#555}
+html.work .pk-card.own{transform:none;box-shadow:inset 0 -3px 0 #222}
+html.work .pk-st b,html.work .pk-chip::before{color:inherit}
 @media (max-width:420px){.pk{--cw:34px;--seat:130px}.pk.many{--cw:26px;--seat:150px}.pk-mine{--cw:44px}}
 `;
 function ensureStyle() {

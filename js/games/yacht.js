@@ -9,9 +9,9 @@
 //   - 요트(Yacht): 5개 모두 같으면 50
 //  조건을 못 맞춘 칸에 기록하면 0점. 매 차례 반드시 한 칸을 채워야 하며, 12번 차례면 끝.
 
-import { dieFace } from '../tools.js?v=202611121529';
-import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES, wait } from './cpu.js?v=202611121529';
-import { chooseHold, chooseCategory } from './yacht-ai.js?v=202611121529';
+import { dieFace } from '../tools.js?v=202611180559';
+import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES, wait } from './cpu.js?v=202611180559';
+import { chooseHold, chooseCategory } from './yacht-ai.js?v=202611180559';
 
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const uniqSorted = (xs) => [...new Set(xs)].sort((a, b) => a - b);
@@ -203,7 +203,7 @@ export default {
 
     // 굴리기 (애니메이션이 끝나면 resolve)
     const roll = () => new Promise((resolve) => {
-      rolling = true; let k = 0;
+      rolling = true; let k = document.documentElement.classList.contains('work') ? 6 : 0; // 업무 모드: 굴리는 효과 없이 바로
       const tick = () => {
         P.dice = P.dice.map((v, i) => (P.held[i] && v != null ? v : 1 + Math.floor(Math.random() * 6)));
         if (k++ < 6) { draw(); setTimeout(tick, 60); return; }

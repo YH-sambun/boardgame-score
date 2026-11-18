@@ -111,13 +111,12 @@ export default {
 
     const saveNote = () => ctx.note.save(note);
 
-    const noteTable = () => `
+    // 용의자·도구·장소를 표 하나씩 (넓은 화면에서는 세 표가 나란히)
+    const noteTable = () => `<div class="clue-tables">${CATS.map(([c, label]) => `
       <div class="table-wrap">
         <table class="clue-table">
-          <thead><tr><th class="cat"></th>${players.map((p, i) => `<th class="${i === meIdx ? 'me' : ''}">${esc(p.name)}${i === meIdx ? '<br><small>나</small>' : ''}</th>`).join('')}</tr></thead>
+          <thead><tr><th class="cat clue-sec-h">${label}</th>${players.map((p, i) => `<th class="${i === meIdx ? 'me' : ''}">${esc(p.name)}${i === meIdx ? '<br><small>나</small>' : ''}</th>`).join('')}</tr></thead>
           <tbody>
-            ${CATS.map(([c, label]) => `
-              <tr class="clue-sec"><th class="cat" colspan="${players.length + 1}">${label}</th></tr>
               ${d.items[c].map((name, i) => {
                 const k = c + i;
                 const rs = note.rows[k] || '';
@@ -125,15 +124,15 @@ export default {
                   <th class="cat"><button class="clue-name ${rs}" data-row="${k}">${rs === 'star' ? '⭐ ' : ''}${esc(name)}</button></th>
                   ${players.map((_, pi) => { const m = note.marks[k]?.[pi] || ''; return `<td class="${pi === meIdx ? 'me' : ''}"><button class="clue-cell m-${m === '?' ? 'q' : m}" data-cell="${k}" data-p="${pi}">${MARK_TEXT[m]}</button></td>`; }).join('')}
                 </tr>`;
-              }).join('')}`).join('')}
+              }).join('')}
           </tbody>
         </table>
-      </div>`;
+      </div>`).join('')}</div>`;
 
     const draw = () => {
       const ed = d.edition || 'custom';
       root.innerHTML = `
-        <section class="card">
+        <section class="card clue-setup">
           <div class="round-head"><h3>카드 구성</h3>${readonly ? '' : `<button class="btn ghost small" data-act="edit">${editing ? '닫기' : '목록 편집'}</button>`}</div>
           <div class="chips">
             ${Object.entries(PRESETS).map(([k, p]) => `<button class="chip ${ed === k ? 'on' : ''}" data-ed="${k}" ${readonly ? 'disabled' : ''}>${p.label}</button>`).join('')}
@@ -160,7 +159,7 @@ export default {
           </div>
         </section>
 
-        <section class="card">
+        <section class="card clue-win">
           <h3>정답을 맞힌 사람</h3>
           <div class="chips">
             ${players.map((p, i) => `<button class="chip ${d.winner === i ? 'on' : ''}" data-win="${i}" ${readonly ? 'disabled' : ''}>${d.winner === i ? '👑 ' : ''}${esc(p.name)}</button>`).join('')}
