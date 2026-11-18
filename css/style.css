@@ -786,3 +786,29 @@ html.work .round-tabs .pill,html.work .pill{font-weight:400;font-size:13px;min-w
 html.work .stepper,html.work .bonus-box,html.work .bonus-box *,html.work .back{border-radius:0!important}
 html.work .stepper .val,html.work .mini,html.work .rscore{font-weight:400;font-size:15px}
 html.work .pname,html.work .prow .pname{font-size:14px}
+
+/* 업무 모드: 덜 티 나게 — 주사위는 숫자 칸, 칠해진 버튼·선택 표시는 흰 바탕 + 테두리만 */
+.die .dnum{display:none}
+html.work .die .pips{display:none}
+html.work .die .dnum{display:inline}
+html.work .die{width:44px;height:26px;padding:0;border:1px solid #c8c8c8;background:#fff;color:#1f1f1f;font-size:14px;font-weight:400;box-shadow:none}
+html.work .die.held{background:#fff;border:2px solid #1f1f1f;box-shadow:none;font-weight:700}
+html.work .die.cel{width:auto;min-width:56px;height:26px;font-size:13px;border-style:solid}
+html.work .dice-tray{gap:0;margin:8px 0 4px}
+html.work .dice-tray .die + .die{margin-left:-1px}
+html.work .ytray{background:#fff;border:1px solid #d4d4d4}
+html.work .btn.primary,html.work .chip.on,html.work .key.on,html.work .pill.active,html.work .seg a.on,html.work .quiz-level.on,html.work .roulette span.on,html.work .roulette span.win,html.work .chess-clock.on,html.work .badge,html.work .chip i{background:#fff!important;color:#1f1f1f!important;border:1px solid #8a8a8a!important;font-weight:700}
+html.work .btn.primary:disabled{opacity:.45}
+html.work .chip i{border:0!important;padding:0 2px}
+html.work .bar span{background:#9a9a9a}
+html.work nav a.active{box-shadow:inset 0 -1px 0 #8a8a8a}
+html.work header .logo::before{background:#fff;box-shadow:inset 0 0 0 1px #8a8a8a}
+html.work .toast{background:#fff;color:#1f1f1f;border:1px solid #c8c8c8;box-shadow:none}
+html.work .update-bar{background:#fff;color:#1f1f1f;border:1px solid #c8c8c8}
+html.work .sd-c.sel{background:#e4e4e4}
+html.work .sd-c.same{background:#f1f1f1}
+html.work .ycell.open,html.work .numfield.open{box-shadow:inset 0 0 0 2px #1f1f1f}
+html.work .modal-back{background:rgba(255,255,255,.6)}
+html.work .modal{box-shadow:0 0 0 1px #c8c8c8}
+html.work header .logo::before{display:none}
+html.work .bonus-box input,html.work .pname .ptotal,html.work .ptotal{font-size:14px;font-weight:400}
