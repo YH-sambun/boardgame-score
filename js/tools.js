@@ -1,5 +1,5 @@
 // 도구: 선 뽑기 · 타이머 · 주사위/코인. 모두 이 기기 안에서만 동작하고 저장하지 않음
-import { selectHtml } from './ui.js?v=202611121529';
+import { selectHtml } from './ui.js?v=202611180559';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rand = (n) => Math.floor(Math.random() * n);
 // 도구 목록: 첫 화면은 큰 버튼만, 누르면 그 도구 하나만 보여 줌
@@ -30,6 +30,7 @@ const stopAll = () => { timers.forEach((f) => f()); timers = []; };
 
 // 알림음 + 진동
 function beep(times = 3) {
+  if (document.documentElement.classList.contains('work')) return; // 업무 모드: 소리·진동 끔
   try { navigator.vibrate?.([300, 120, 300, 120, 300]); } catch { /* 지원 안 함 */ }
   try {
     const ac = new (window.AudioContext || window.webkitAudioContext)();

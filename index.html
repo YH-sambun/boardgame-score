@@ -12,7 +12,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="보드게임">
-  <link rel="stylesheet" href="css/style.css?v=202611121529">
+  <script>try { if (localStorage.getItem('bgscore:work') === '1') { document.documentElement.classList.add('work'); document.title = '업무 현황'; } } catch (e) {}</script>
+  <link rel="stylesheet" href="css/style.css?v=202611180559">
 </head>
 <body>
   <header>
@@ -30,6 +31,6 @@
   </nav>
   <main id="app"><p class="muted center">불러오는 중…</p></main>
   <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
-  <script type="module" src="js/app.js?v=202611121529"></script>
+  <script type="module" src="js/app.js?v=202611180559"></script>
 </body>
 </html>

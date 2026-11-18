@@ -643,3 +643,79 @@ table.daily td small{font-weight:400}
 @media (max-width:599px){.play-top h2 .pdate{display:none}}
 .mode-icons .more-n{align-self:center;font-size:14px;font-weight:700;color:var(--muted);margin-left:4px}
 @media (min-width:1100px){.tool-grid,.page-h{max-width:1100px;margin-left:auto;margin-right:auto}}
+
+/* ───────── 노트북·PC: 게임 화면을 스크롤 없이 한 화면에 ─────────
+   - 위쪽 메뉴(홈·기록·전적·도구)를 제목줄 안으로 올려 한 줄로
+   - 게임 화면(main.fit)은 --fit-top(판이 시작하는 높이, app.js 가 잼)을 빼고 남은 높이(--fit)에 판을 맞춤 */
+@media (min-width:900px){
+  body{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr;min-height:100vh}
+  header,nav{grid-row:1;grid-column:1;position:sticky;top:0}
+  header{z-index:6;padding:10px 24px;padding-top:calc(10px + env(safe-area-inset-top))}
+  nav{z-index:7;justify-self:start;align-self:center;margin-left:120px;padding:0;background:transparent;border:0;top:calc(9px + env(safe-area-inset-top))}
+  nav a{color:#b9c2cf;padding:5px 14px}
+  nav a:hover{color:#fff}
+  nav a.active{background:#fff;color:#1d2a3a}
+  main{grid-row:2;grid-column:1;width:100%}
+  main.fit{--fit:max(300px,calc(100vh - var(--fit-top,200px) - 14px));padding-top:10px;padding-bottom:12px}
+  main.fit .play-top{margin-bottom:6px}
+  main.fit .play-top h2{margin:0}
+  main.fit .card{margin:8px 0}
+  /* 끝난 게임의 결과는 한 줄로 */
+  main.fit .card.result{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;padding:10px 14px}
+  main.fit .card.result h3{margin:0}
+  main.fit .podium{display:flex;flex-wrap:wrap;gap:4px 16px;flex:1}
+  main.fit .podium li{padding:0;gap:6px;font-size:15px}
+  main.fit .podium .rk{width:auto}
+  main.fit .podium li b{margin-left:4px}
+  main.fit .result-actions{margin:0;flex:none}
+  main.fit .result-actions .btn{flex:none;padding:8px 16px;font-size:15px}
+  /* 판 크기 = 남은 높이에서 판 위아래 글·버튼 높이를 뺀 만큼 */
+  main.fit .chessboard{max-width:min(620px,calc(var(--fit) - 150px))}
+  main.fit .chess-player{max-width:min(620px,calc(var(--fit) - 150px))}
+  main.fit .omok-board{max-width:min(640px,calc(var(--fit) - 245px))}
+  main.fit .jg-board{max-width:min(560px,calc((var(--fit) - 226px) * .9))}
+  main.fit .jg-pc{font-size:calc(min(560px,(var(--fit) - 226px) * .9) / 9 * .52)}
+  main.fit .jg-pc.tK{font-size:calc(min(560px,(var(--fit) - 226px) * .9) / 9 * .6)}
+  main.fit .jg-pc.tA,main.fit .jg-pc.tP{font-size:calc(min(560px,(var(--fit) - 226px) * .9) / 9 * .42)}
+  main.fit .sd-grid,main.fit .sd-pad{max-width:min(560px,calc(var(--fit) - 175px))}
+  main.fit .sd-pad .key{height:44px}
+  main.fit .cp-wrap{max-width:min(520px,calc(var(--fit) - 112px))}
+  main.fit .yut-board{max-width:min(620px,calc(var(--fit) - 132px))}
+  /* 요트다이스: 왼쪽 주사위·버튼, 오른쪽 점수표 */
+  main.fit .yacht-card{max-width:1100px;margin:8px auto;display:grid;grid-template-columns:minmax(280px,1fr) minmax(0,1.3fr);column-gap:20px;align-content:start}
+  main.fit .yacht-card > *{grid-column:1}
+  main.fit .yacht-card > .table-wrap{grid-column:2;grid-row:1 / span 8}
+  main.fit .yacht-card .round-nav{align-self:end}
+  main.fit .ycell{height:clamp(20px,calc((var(--fit) - 110px) / 16 - 7px),44px);font-size:17px}
+  main.fit .ytable td{padding:2px 4px}
+  main.fit .ytable th{padding-top:2px;padding-bottom:2px}
+}
+@media (min-width:900px){.board-card{top:64px;max-height:calc(100vh - 80px)}}
+/* 클루: 분류마다 표 하나 (폰에서는 위아래로) */
+.clue-sec-h{font-size:12px;color:var(--muted);vertical-align:bottom}
+.clue-tables .table-wrap + .table-wrap{margin-top:8px}
+@media (min-width:900px){
+  .clue-tables{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+  .clue-tables .table-wrap + .table-wrap{margin-top:0}
+  main.fit #board:has(> .clue-note){display:grid;grid-template-columns:minmax(0,1fr) 300px;grid-template-rows:auto 1fr;column-gap:16px;align-items:start}
+  main.fit #board > .clue-note{grid-column:1;grid-row:1 / span 2}
+  main.fit #board > .clue-setup,main.fit #board > .clue-win{grid-column:2}
+  main.fit .clue-cell{height:28px;min-width:34px;font-size:16px}
+  main.fit .clue-name{padding:3px 4px;font-size:14px;min-width:70px}
+  main.fit .clue-memo textarea{height:56px}
+  main.fit .clue-memo{margin-top:8px}
+  /* 다빈치 코드: 기록 | 추리 도우미 나란히 */
+  main.fit #board:has(> .dv-note){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:16px;align-items:start}
+}
+
+/* ───────── 업무 모드 (` 키): 흑백, 움직이는 효과 끔, 차분한 글꼴 ───────── */
+html.work{filter:grayscale(1)}
+html.work *,html.work *::before,html.work *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+html.work body{font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo","Noto Sans KR",sans-serif;font-size:14px}
+html.work header{background:#3a3a3a}
+html.work .logo{font-size:16px;font-weight:600}
+html.work .card{border-radius:4px;box-shadow:none}
+html.work .btn,html.work .chip,html.work nav a,html.work select{border-radius:4px}
+html.work .modal-back{animation:none}
+html.work .die.rolling{transform:none}
+html.work .gmark.sm,html.work .mode-icons{display:none}

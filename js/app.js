@@ -1,10 +1,10 @@
-import { store } from './store.js?v=202611121529';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611121529';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611121529';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611121529';
-import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611121529';
-import { viewTools } from './tools.js?v=202611121529';
-import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611121529';
+import { store } from './store.js?v=202611180559';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611180559';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611180559';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611180559';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611180559';
+import { viewTools } from './tools.js?v=202611180559';
+import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611180559';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -228,7 +228,7 @@ async function viewNew(gameId) {
 
 // 새로 얻은 업적 알림
 function showBadges(list) {
-  if (!list.length) return;
+  if (!list.length || isWork()) return; // 업무 모드에서는 업적 팝업 안 띄움
   const box = document.createElement('div');
   box.className = 'modal-back';
   box.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
@@ -331,6 +331,7 @@ async function viewPlay(id) {
     });
   };
   render();
+  fitPlay();
 
   setHelp(g.id);
   const del = $app.querySelector('.play-top [data-act="del"]');
@@ -342,6 +343,15 @@ async function viewPlay(id) {
   if (re) re.onclick = async () => { s.status = 'playing'; await store.updateSession(s.id, { status: 'playing' }); viewPlay(s.id); };
   $app.onclick = null; $app.onsubmit = null; $app.onchange = null;
 }
+
+// 노트북·PC: 게임판이 시작하는 높이를 재서 CSS(--fit-top)로 넘김 → 남은 높이에 판을 맞춰 스크롤 없이
+function fitPlay() {
+  $app.classList.add('fit');
+  const board = document.getElementById('board');
+  if (!board) return;
+  $app.style.setProperty('--fit-top', `${Math.round(board.getBoundingClientRect().top + scrollY)}px`);
+}
+addEventListener('resize', debounce(() => { if ($app.classList.contains('fit')) fitPlay(); }, 150));
 
 // 기록 화면 맨 위: 이 기록이 서버(계정)에 저장돼 다른 기기에서도 보이는지 알려 줌
 let unSync = null;
@@ -572,7 +582,7 @@ async function viewDailyBoard(sessions) {
   });
   $app.innerHTML = `<section class="card">
     <h2>전적 ${tipBtn()}</h2>
-    ${tipBody('<p>스도쿠·차빼!에서 <b>오늘의 문제</b>로 푼 결과를 나와 친구끼리 비교해요. 같은 날 같은 단계를 고르면 모두 같은 문제가 나와요.</p><p>점수가 높은 순, 같으면 빨리 푼 순이에요. 같은 문제를 여러 번 풀면 가장 좋은 결과만 올라가요. 친구는 계정 메뉴 → 친구에서 맺을 수 있어요.</p>')}
+    ${tipBody('<p>스도쿠·러시아 워에서 <b>오늘의 문제</b>로 푼 결과를 나와 친구끼리 비교해요. 같은 날 같은 단계를 고르면 모두 같은 문제가 나와요.</p><p>점수가 높은 순, 같으면 빨리 푼 순이에요. 같은 문제를 여러 번 풀면 가장 좋은 결과만 올라가요. 친구는 계정 메뉴 → 친구에서 맺을 수 있어요.</p>')}
     <div class="seg">${statTabs().map(([k, l]) => `<a class="${k === 'daily' ? 'on' : ''}" href="#/stats?tab=${k}">${l}</a>`).join('')}</div>
     <div class="toolbar daynav">
       <a class="btn small ghost" href="#/stats?tab=daily&date=${shift(-1)}" aria-label="전날">‹</a>
@@ -614,7 +624,7 @@ async function viewFriends() {
   };
   $app.innerHTML = `<section class="card">
     <h2>친구 ${tipBtn()}</h2>
-    ${tipBody('<p>친구를 맺으면 서로의 <b>오늘의 문제</b>(스도쿠·차빼!) 결과를 볼 수 있고, 전적에서 <b>친구만</b>을 고르면 나와 친구끼리만 순위·상대 전적·레이팅을 계산해요.</p><p>친구가 볼 수 있는 건 오늘의 문제 결과(이름·점수·시간)뿐이에요. 다른 게임 기록은 지금처럼 참가자에 이메일을 연결해 공유한 것만 보여요.</p><p>순위표에서 친구를 알아보려면 그 사람의 참가자에 계정 이메일이 연결돼 있어야 해요. 아래에서 바로 연결할 수 있어요.</p>')}
+    ${tipBody('<p>친구를 맺으면 서로의 <b>오늘의 문제</b>(스도쿠·러시아 워) 결과를 볼 수 있고, 전적에서 <b>친구만</b>을 고르면 나와 친구끼리만 순위·상대 전적·레이팅을 계산해요.</p><p>친구가 볼 수 있는 건 오늘의 문제 결과(이름·점수·시간)뿐이에요. 다른 게임 기록은 지금처럼 참가자에 이메일을 연결해 공유한 것만 보여요.</p><p>순위표에서 친구를 알아보려면 그 사람의 참가자에 계정 이메일이 연결돼 있어야 해요. 아래에서 바로 연결할 수 있어요.</p>')}
     <div class="friend-code"><span class="muted">내 친구 코드</span><b>${esc(code)}</b></div>
     <div class="btn-row">
       <button class="btn primary" data-act="share">초대 링크 보내기</button>
@@ -757,9 +767,44 @@ async function offerGuestImport() {
   toast(`게임 ${n}개를 계정으로 옮겼어요`);
 }
 
+// ───────── 업무 모드: ` 키로 켜고 끔 ─────────
+// 제목이 '업무 현황'으로 바뀌고 흑백 + 움직이는 효과·소리·팝업을 끔. 다시 열어도 유지 (index.html 머리에서 먼저 적용)
+const WORK_KEY = 'bgscore:work';
+const isWork = () => document.documentElement.classList.contains('work');
+const NAV_WORK = { '#/': '현황', '#/history': '내역', '#/stats': '집계', '#/tools': '도구' };
+const NAV_PLAY = { '#/': '홈', '#/history': '기록', '#/stats': '전적', '#/tools': '도구' };
+const WORK_ICON = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="4" y="3" width="24" height="26" rx="2" fill="#fff" stroke="#555" stroke-width="2"/><path d="M9 10h14M9 15h14M9 20h10" stroke="#777" stroke-width="2"/></svg>');
+function applyWork(on) {
+  document.documentElement.classList.toggle('work', on);
+  document.title = on ? '업무 현황' : '보드게임';
+  const logo = document.querySelector('.logo');
+  if (logo) logo.textContent = on ? '업무 현황' : '보드게임';
+  document.querySelectorAll('nav a').forEach((a) => { const t = (on ? NAV_WORK : NAV_PLAY)[a.getAttribute('href')]; if (t) a.textContent = t; });
+  const icon = document.querySelector('link[rel="icon"]');
+  if (icon) icon.href = on ? WORK_ICON : 'icons/icon-192.png';
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', on ? '#3a3a3a' : '#1d2a3a');
+  const mi = document.querySelector('[data-act="work"]');
+  if (mi) mi.textContent = on ? '업무 모드 끄기 ( ` )' : '업무 모드 켜기 ( ` )';
+}
+function setWork(on) {
+  applyWork(on);
+  try { localStorage.setItem(WORK_KEY, on ? '1' : '0'); } catch { /* 저장 안 돼도 이번 화면에서는 적용 */ }
+}
+function bindWorkKey() {
+  addEventListener('keydown', (e) => {
+    if (e.code !== 'Backquote' && e.key !== '`') return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+    const t = e.target;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return; // 글 쓰는 중에는 그대로 입력
+    e.preventDefault();
+    setWork(!isWork());
+  });
+}
+
 // ───────── 라우터 ─────────
 async function route() {
   $app.onclick = $app.onsubmit = $app.onchange = null;
+  $app.classList.remove('fit');
   stopWatching();
   if (store.mode === 'firebase' && !store.user) return viewLogin();
   const [path] = location.hash.replace(/^#/, '').split('?');
@@ -791,6 +836,8 @@ async function route() {
 }
 
 async function main() {
+  applyWork(isWork());
+  bindWorkKey();
   try { await store.init(); } catch (err) { $app.innerHTML = `<section class="card"><p>Firebase 초기화 실패: ${esc(err.message)}</p></section>`; return; }
   let wasSignedIn = false;
   store.onAuth(async (u) => {
@@ -802,9 +849,12 @@ async function main() {
       { href: '#/players', label: '참가자 관리' },
       store.canFriends?.() && { href: '#/friends', label: '친구' },
       { href: '#/about', label: '앱 정보 · 업데이트' },
+      { act: 'work', label: isWork() ? '업무 모드 끄기 ( ` )' : '업무 모드 켜기 ( ` )' },
       store.guest && { act: 'login', label: 'Google로 로그인' },
       (store.guest || (store.mode === 'firebase' && u)) && { act: 'logout', label: store.guest ? '게스트 나가기' : '로그아웃', danger: true },
     ], { label: `${esc(who)} ▾`, cls: 'right user-menu' }) : '';
+    const wk = $user.querySelector('[data-act="work"]');
+    if (wk) wk.onclick = () => setWork(!isWork());
     const lo = $user.querySelector('[data-act="logout"]');
     if (lo) lo.onclick = () => store.signOut();
     const li = $user.querySelector('[data-act="login"]');
