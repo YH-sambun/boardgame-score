@@ -1,5 +1,5 @@
 // 도구: 선 뽑기 · 타이머 · 주사위/코인. 모두 이 기기 안에서만 동작하고 저장하지 않음
-import { selectHtml } from './ui.js?v=202611180627';
+import { selectHtml } from './ui.js?v=202611180640';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rand = (n) => Math.floor(Math.random() * n);
 // 도구 목록: 첫 화면은 큰 버튼만, 누르면 그 도구 하나만 보여 줌
@@ -229,7 +229,8 @@ function timerTool(root, players, part) {
 // ───── 주사위 · 코인 · 셀레스티아 주사위 ─────
 const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 export const dieFace = (v, sides = 6) => (sides === 6 && v >= 1 && v <= 6
-  ? `<span class="pips">${Array.from({ length: 9 }, (_, i) => `<i class="${PIPS[v].includes(i) ? 'on' : ''}"></i>`).join('')}</span>`
+  // 업무 모드에서는 점 대신 숫자(.dnum)만 보임 (CSS에서 전환)
+  ? `<span class="pips">${Array.from({ length: 9 }, (_, i) => `<i class="${PIPS[v].includes(i) ? 'on' : ''}"></i>`).join('')}</span><b class="dnum">${v}</b>`
   : `<b>${v ?? '?'}</b>`);
 // 셀레스티아 위험 주사위: 6면 중 4면에 위험 그림, 2면은 빈 면 (가지고 있는 판본과 다르면 알려 주세요)
 const CEL_FACES = ['', '', '먹구름', '번개', '새떼', '해적'];
