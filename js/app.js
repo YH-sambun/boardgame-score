@@ -1,10 +1,10 @@
-import { store } from './store.js?v=202611180606';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611180606';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611180606';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611180606';
-import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611180606';
-import { viewTools } from './tools.js?v=202611180606';
-import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611180606';
+import { store } from './store.js?v=202611180613';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611180613';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611180613';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611180613';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611180613';
+import { viewTools } from './tools.js?v=202611180613';
+import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611180613';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');

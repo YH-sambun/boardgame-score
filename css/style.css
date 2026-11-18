@@ -648,14 +648,14 @@ table.daily td small{font-weight:400}
    - 위쪽 메뉴(홈·기록·전적·도구)를 제목줄 안으로 올려 한 줄로
    - 게임 화면(main.fit)은 --fit-top(판이 시작하는 높이, app.js 가 잼)을 빼고 남은 높이(--fit)에 판을 맞춤 */
 @media (min-width:900px){
-  body{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr;min-height:100vh}
+  body{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr;min-height:100vh}
   header,nav{grid-row:1;grid-column:1;position:sticky;top:0}
   header{z-index:6;padding:10px 24px;padding-top:calc(10px + env(safe-area-inset-top))}
   nav{z-index:7;justify-self:start;align-self:center;margin-left:120px;padding:0;background:transparent;border:0;top:calc(9px + env(safe-area-inset-top))}
   nav a{color:#b9c2cf;padding:5px 14px}
   nav a:hover{color:#fff}
   nav a.active{background:#fff;color:#1d2a3a}
-  main{grid-row:2;grid-column:1;width:100%}
+  main{grid-row:3;grid-column:1;width:100%}
   main.fit{--fit:max(300px,calc(100vh - var(--fit-top,200px) - 14px));padding-top:10px;padding-bottom:12px}
   main.fit .play-top{margin-bottom:6px}
   main.fit .play-top h2{margin:0}
@@ -719,3 +719,70 @@ html.work .btn,html.work .chip,html.work nav a,html.work select{border-radius:4p
 html.work .modal-back{animation:none}
 html.work .die.rolling{transform:none}
 html.work .gmark.sm,html.work .mode-icons{display:none}
+
+/* ───────── 업무 모드: 스프레드시트처럼 ─────────
+   흰 바탕에 옅은 칸 격자, 맑은 고딕 13px, 둥근 모서리 없음, 표는 칸마다 선,
+   위에 수식 입력줄, 메뉴(현황·내역·집계·도구)는 아래쪽 시트 탭 */
+.xl-bar{display:none}
+html.work{color-scheme:light;--bg:#fff;--card:#fff;--ink:#1f1f1f;--muted:#6b6b6b;--line:#d4d4d4;--accent:#3c3c3c;--accent-ink:#fff;--chip:#f3f3f3;--hi:#ececec;--pos:#1f1f1f;--neg:#1f1f1f}
+html.work body{font-family:"맑은 고딕","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;font-size:13px;letter-spacing:0;
+  background-color:#fff;background-image:linear-gradient(to right,#e6e6e6 1px,transparent 1px),linear-gradient(to bottom,#e6e6e6 1px,transparent 1px);background-size:72px 22px;background-position:-1px -1px;padding-bottom:30px}
+html.work header{background:#ececec;color:#1f1f1f;border-bottom:1px solid #c8c8c8;padding-top:calc(6px + env(safe-area-inset-top));padding-bottom:6px}
+html.work header .logo{font-size:14px;font-weight:700;color:#1f1f1f}
+html.work header .logo::before{content:"";display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:-2px;background:#3c3c3c;border-radius:2px;box-shadow:inset 0 0 0 3px #3c3c3c,inset 0 0 0 4px #fff}
+html.work header .qbtn,html.work header details.dd > summary{color:#1f1f1f;border-color:#bdbdbd;background:#fff;border-radius:2px}
+html.work header details.dd[open] > summary{background:#e0e0e0}
+/* 수식 입력줄 */
+html.work .xl-bar{display:flex;align-items:stretch;height:26px;background:#fff;border-bottom:1px solid #c8c8c8;font-size:13px;color:#1f1f1f;position:relative;z-index:4}
+html.work .xl-ref{width:84px;padding:4px 8px;border-right:1px solid #d4d4d4}
+html.work .xl-fx{padding:4px 10px;color:#6b6b6b;font-style:italic;border-right:1px solid #d4d4d4}
+html.work .xl-val{flex:1;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 시트 탭 (아래 고정) */
+html.work nav{position:fixed!important;left:0;right:0;bottom:0;top:auto!important;margin:0!important;z-index:20;display:flex;gap:0;height:30px;padding:0 0 env(safe-area-inset-bottom) 40px!important;background:#ececec!important;border:0;border-top:1px solid #c8c8c8!important}
+html.work nav a{border-radius:0;padding:5px 18px;font-size:12px;font-weight:400;color:#3c3c3c;border-right:1px solid #c8c8c8;background:transparent}
+html.work nav a.active{background:#fff;color:#1f1f1f;font-weight:700;box-shadow:inset 0 -2px 0 #3c3c3c}
+html.work nav a:hover{color:#1f1f1f;background:#f6f6f6}
+html.work main{padding-bottom:40px}
+@media (min-width:900px){html.work main.fit{--fit:max(300px,calc(100vh - var(--fit-top,200px) - 64px))}}
+/* 카드·버튼·입력: 각진 사각형, 그림자 없음 */
+html.work .card{border-radius:0;border-color:#c8c8c8;box-shadow:none;padding:10px 12px}
+html.work .card h2,html.work .card h3{font-size:14px;font-weight:700}
+html.work .play-top h2{font-size:15px}
+html.work .btn,html.work .chip,html.work select,html.work input,html.work textarea,html.work .key,html.work .numfield,html.work .ycell,html.work .clue-cell,html.work .mini,html.work .pill,html.work .die,html.work .game-tile,html.work .mode-card,html.work .qbtn,html.work .tag,html.work .badge,html.work .seg,html.work .seg a,html.work .modal,html.work .toast,html.work .dd-menu{border-radius:0!important}
+html.work .btn{background:#f7f7f7;border-color:#bdbdbd;color:#1f1f1f;font-weight:400;font-size:13px;padding:6px 14px}
+html.work .btn.primary{background:#3c3c3c;border-color:#3c3c3c;color:#fff}
+html.work .btn.small{padding:4px 10px;font-size:12px}
+html.work .chip{background:#fff;border:1px solid #c8c8c8;font-weight:400}
+html.work .chip.on{background:#3c3c3c;color:#fff}
+html.work .game-tile,html.work .mode-card{background:#fff;border-color:#c8c8c8;font-weight:400}
+html.work .mode-card{min-height:0;padding:16px}
+html.work .tag,html.work .badge{background:#f3f3f3;color:#1f1f1f;border:1px solid #c8c8c8}
+/* 표: 칸마다 선, 머리줄은 회색 */
+html.work table{border-collapse:collapse;font-variant-numeric:tabular-nums}
+html.work table th,html.work table td{border:1px solid #d4d4d4;padding:2px 6px;font-size:13px}
+html.work table thead th{background:#f3f3f3;color:#1f1f1f;font-weight:700;font-size:12px}
+html.work table tfoot th,html.work table tfoot td{background:#f3f3f3;font-weight:700}
+html.work table .turn,html.work table th.me,html.work table td.me{background:#f7f7f7}
+html.work .ytable td,html.work .clue-table td{padding:0}
+html.work .ycell,html.work .clue-cell,html.work .numfield{border:0;background:#fff;font-weight:400;font-size:14px;height:24px}
+html.work .ycell.open,html.work .numfield.open{box-shadow:inset 0 0 0 2px #1f1f1f}
+html.work .ycell.preview{border:0;color:#9a9a9a}
+html.work .ytable th.cat,html.work .clue-sec th.cat{background:#fff;font-weight:400}
+html.work .numfield{border:1px solid #d4d4d4;height:32px}
+html.work .key{background:#fff;font-weight:400}
+html.work .key.on{background:#3c3c3c}
+html.work .podium li{font-size:13px}
+html.work .toast{background:#3c3c3c;font-size:12px}
+html.work nav{justify-self:stretch!important;width:auto}
+html.work .mode-card b{font-size:17px}
+html.work .mode-card .muted{font-size:12px}
+html.work .ytable th.cat{font-size:13px}
+html.work .ytray,html.work .back,html.work .cp-wrap,html.work .sd-grid,html.work .chessboard,html.work .omok-board,html.work .jg-board,html.work .yut-board{border-radius:0}
+html.work .ytray{background:#f3f3f3;border:1px solid #d4d4d4}
+html.work .seg a{font-weight:400;font-size:13px}
+html.work .seg a.on{background:#e0e0e0;color:#1f1f1f;font-weight:700}
+html.work select{font-size:13px;font-weight:400;padding:5px 28px 5px 8px}
+html.work .round-tabs .pill,html.work .pill{font-weight:400;font-size:13px;min-width:36px;height:30px}
+html.work .stepper,html.work .bonus-box,html.work .bonus-box *,html.work .back{border-radius:0!important}
+html.work .stepper .val,html.work .mini,html.work .rscore{font-weight:400;font-size:15px}
+html.work .pname,html.work .prow .pname{font-size:14px}
