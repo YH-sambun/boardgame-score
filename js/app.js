@@ -1,10 +1,10 @@
-import { store } from './store.js?v=202611180813';
-import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611180813';
-import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611180813';
-import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611180813';
-import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611180813';
-import { viewTools } from './tools.js?v=202611180813';
-import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611180813';
+import { store } from './store.js?v=202611270915';
+import { GAMES, getGame, loadGame, loadGames, gameIcon, prefetchGames } from './games/index.js?v=202611270915';
+import { ranks, computeStats, headToHead, eloRatings, rankedSessions } from './stats.js?v=202611270915';
+import { ACHIEVEMENTS, computeAchievements, newlyEarned } from './achievements.js?v=202611270915';
+import { watchForUpdate, appInfoHtml, bindAppInfo } from './update.js?v=202611270915';
+import { viewTools } from './tools.js?v=202611270915';
+import { tipBtn, tipBody, selectHtml, navSelect, menuHtml, bindUi } from './ui.js?v=202611270915';
 
 const $app = document.getElementById('app');
 const $user = document.getElementById('user');
@@ -569,7 +569,7 @@ async function viewDailyBoard(sessions) {
       const list = rows.filter((r) => r.gameId === gid && r.level === lv)
         .sort((a, b) => (b.solved - a.solved) || b.score - a.score || a.elapsed - b.elapsed);
       let rank = 0; let prev = null;
-      return `<h3 class="sub-h">${gameIcon(g, 'sm')} ${esc(g.name)} · ${esc(g.settingsFields?.find((f) => f.key === 'level')?.options?.find((o) => o.value === lv)?.label || `${lv + 1}단계`)}</h3>
+      return `<h3 class="sub-h">${gameIcon(g, 'sm')} ${esc(g.name)} · ${esc(g.levelLabel?.(lv) || g.settingsFields?.find((f) => f.key === 'level')?.options?.find((o) => o.value === lv)?.label || `${lv + 1}단계`)}</h3>
         <div class="table-wrap"><table class="stats daily"><thead><tr><th>#</th><th>이름</th><th>점수</th><th>시간</th><th>${gid === 'carpark' ? '이동' : '실수'}</th></tr></thead>
         <tbody>${list.map((r, i) => {
           const k = `${r.solved}|${r.score}|${r.elapsed}`;
