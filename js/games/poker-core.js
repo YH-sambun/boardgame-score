@@ -10,7 +10,7 @@
 //  steps: [{ deal:[앞면?…] } | { board:n } | { bet:true }] 를 차례대로 진행
 //  data = { chips:[], no, dealer, carry, h:{ 이번 판 }, log:[] }
 
-import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES, wait } from './cpu.js?v=202611180813';
+import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES, wait } from './cpu.js?v=202611270915';
 
 export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export function shuffle(a) {

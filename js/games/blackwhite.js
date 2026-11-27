@@ -2,7 +2,7 @@
 //  짝수(0·2·4·6·8)는 검은 타일, 홀수(1·3·5·7)는 흰 타일. 상대에게는 색만 보이고, 승패만 알려 줘요 (숫자는 끝나고 공개)
 //  한 기기를 넘겨 가며 둠: 자기 차례에만 가림막을 열고 고름. 혼자 고르면 컴퓨터와 대결
 // session.data = { rounds:[{ lead, t:[자리0 타일|null, 자리1 타일|null], win:0|1|null }], winner, draw }
-import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES } from './cpu.js?v=202611180813';
+import { isCpu, levelField, cpuPlayers, levelOf, LEVEL_NAMES } from './cpu.js?v=202611270915';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const TILES = [0, 1, 2, 3, 4, 5, 6, 7, 8];
